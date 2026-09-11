@@ -51,7 +51,7 @@
   .auth-switch:hover{color:var(--accent);text-decoration:underline;}
 
   /* App Principal Compacta */
-  #appContainer{display:none;display:flex;flex-direction:column;min-height:100vh;}
+  #appContainer{display:none;flex-direction:column;min-height:100vh;}
 
   header.masthead{
     display:flex;align-items:center;justify-content:space-between;
@@ -259,7 +259,7 @@
   <div class="workspace">
     <aside class="sidebar">
       <div class="sidebar-header">
-        <span id="lifeStatus" style="font-size:11.5px;color:var(--muted);">Cargando nube...</span>
+        <span id="lifeStatus" style="font-size:11.5px;color:var(--muted);">Cargando...</span>
         <div class="view-tabs">
           <button id="tabFeed" class="active">Lista</button>
           <button id="tabMapToggle">Mapa</button>
@@ -292,9 +292,12 @@
   var auth = firebase.auth();
   var db = firebase.firestore();
 
-  var EMBEDDED_API_KEY = '89f4bf7f-47ac-4e68-949f-de69c890bce7';
+  var EMBEDDED_API_KEY = 'PEGA_AQUI_TU_API_KEY';
   var currentUser = null;
-  var state = {
+  
+  // Carga instantánea de estado desde caché local si existe
+  var cachedState = localStorage.getItem('ebird_fast_state');
+  var state = cachedState ? JSON.parse(cachedState) : {
     apiKey: EMBEDDED_API_KEY, region:'CL', mode:'notable', backDays:2, interval:10,
     friendPhone:'', lifeList:[], hideSeen:false, nameLocale:'es-CL', includeProvisional:false, seenSubIds:[]
   };
@@ -303,7 +306,7 @@
   var pollTimer = null, countdownTimer = null, nextRunAt = null;
   var lastObservations = [];
 
-  // Auth logic
+  // Auth logic optimizada
   var isRegistering = false;
   document.getElementById('authSwitchMode').addEventListener('click', function(){
     isRegistering = !isRegistering;
@@ -325,7 +328,12 @@
     }
   });
 
-  document.getElementById('btnLogout').addEventListener('click', function(){ auth.signOut(); });
+  document.getElementById('btnLogout').addEventListener('click', function(){
+    auth.signOut().then(function(){
+      localStorage.removeItem('ebird_fast_state');
+      location.reload();
+    });
+  });
 
   auth.onAuthStateChanged(function(user){
     if(user){
@@ -333,7 +341,25 @@
       document.getElementById('authScreen').style.display = 'none';
       document.getElementById('appContainer').style.display = 'flex';
       document.getElementById('userEmailSpan').textContent = user.email;
-      loadUserDataFromCloud();
+      
+      // Renderizar UI de inmediato con lo que haya
+      fillForm();
+      renderLifeStatus();
+      initMap();
+      fetchObservations(false);
+
+      // Sincronizar datos de Firestore en segundo plano (sin bloquear)
+      db.collection('users').doc(currentUser.uid).get().then(function(doc){
+        if(doc.exists){
+          var data = doc.data();
+          if(data.preferences) Object.assign(state, data.preferences);
+          if(data.lifeList) state.lifeList = data.lifeList;
+          localStorage.setItem('ebird_fast_state', JSON.stringify(state));
+          fillForm();
+          renderLifeStatus();
+          renderCurrentData();
+        }
+      }).catch(function(){});
     } else {
       currentUser = null;
       document.getElementById('authScreen').style.display = 'flex';
@@ -341,26 +367,8 @@
     }
   });
 
-  function loadUserDataFromCloud(){
-    if(!currentUser) return;
-    db.collection('users').doc(currentUser.uid).get().then(function(doc){
-      if(doc.exists){
-        var data = doc.data();
-        if(data.preferences) Object.assign(state, data.preferences);
-        if(data.lifeList) state.lifeList = data.lifeList;
-      }
-      fillForm();
-      renderLifeStatus();
-      initMap();
-      fetchObservations(false);
-    }).catch(function(){
-      fillForm();
-      initMap();
-      fetchObservations(false);
-    });
-  }
-
   function saveUserDataToCloud(){
+    localStorage.setItem('ebird_fast_state', JSON.stringify(state));
     if(!currentUser) return;
     db.collection('users').doc(currentUser.uid).set({
       preferences: {
@@ -643,7 +651,6 @@
     fetchObservations(true);
   });
 
-  // Ajuste inicial responsive de pestañas
   if(window.innerWidth <= 850){
     document.getElementById('map-container').style.display = 'none';
   }
