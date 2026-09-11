@@ -308,7 +308,7 @@
   }
   function fetchSpeciesImage(sciName){
     if(Object.prototype.hasOwnProperty.call(imageCache, sciName)) return Promise.resolve(imageCache[sciName]);
-    var url = 'https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(sciName.replace(/ /g,'_'));
+    var url = 'https://es.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(sciName.replace(/ /g,'_'));
     return fetch(url).then(function(res){
       if(!res.ok) throw new Error('sin página');
       return res.json();
@@ -336,8 +336,8 @@
   function loadState(){
     var raw = localStorage.getItem(STORAGE_KEY);
     var def = {
-      apiKey:EMBEDDED_API_KEY, region:'CL', mode:'notable', backDays:2, interval:10,
-      homeLat:'', homeLng:'', friendPhone:'', notifEnabled:false,
+      apiKey:EMBEDDED_API_KEY, region:'CL-AR', mode:'notable', backDays:2, interval:10,
+      homeLat:'-38.7359', homeLng:'-72.5904', friendPhone:'', notifEnabled:false,
       lifeList:[], lifeListUploadedAt:null, seenSubIds:[]
     };
     if(!raw) return def;
@@ -478,7 +478,7 @@
   }
 
   function fetchWikiThumb(title){
-    return fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title))
+    return fetch('https://es.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title))
       .then(function(res){ if(!res.ok) throw new Error('sin resultado'); return res.json(); })
       .then(function(data){ return (data.thumbnail && data.thumbnail.source) ? data.thumbnail.source : null; });
   }
@@ -528,7 +528,7 @@
   function buildUrl(){
     var base = 'https://api.ebird.org/v2/data/obs/' + encodeURIComponent(state.region) + '/recent';
     if(state.mode === 'notable') base += '/notable';
-    var params = ['back='+state.backDays, 'locale=es', 'key='+encodeURIComponent(state.apiKey)];
+    var params = ['back='+state.backDays, 'locale=es-CL', 'key='+encodeURIComponent(state.apiKey)];
     if(state.mode === 'all') params.push('maxResults=300');
     return base + '?' + params.join('&');
   }
