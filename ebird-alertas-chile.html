@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bitácora de avistamientos · eBird Chile</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+  :root{
+    --ink:#16231F;
+    --paper:#E9ECE4;
+    --paper-2:#F4F5EF;
+    --moss:#45614A;
+    --teal:#1F6F64;
+    --teal-dark:#164F47;
+    --flame:#C94A3D;
+    --line:#C9CBB8;
+    --muted:#5B6A5D;
+    --serif: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--paper);color:var(--ink);font-family:var(--sans);}
+  body{min-height:100vh;}
+  a{color:var(--teal-dark);}
+
+  header.masthead{
+    display:flex;align-items:baseline;justify-content:space-between;
+    padding:22px 28px 18px 28px;border-bottom:2px solid var(--ink);
+    background:var(--paper-2);
+  }
+  header.masthead h1{
+    font-family:var(--serif);font-weight:700;font-size:26px;margin:0;
+    letter-spacing:0.2px;
+  }
+  header.masthead .sub{
+    font-size:13px;color:var(--muted);margin-top:4px;
+  }
+  header.masthead .status{
+    text-align:right;font-size:12.5px;color:var(--muted);line-height:1.5;
+  }
+  header.masthead button.refresh{
+    margin-left:14px;background:var(--teal);color:#fff;border:none;
+    padding:8px 14px;border-radius:3px;font-size:13px;cursor:pointer;
+    font-family:var(--sans);
+  }
+  header.masthead button.refresh:hover{background:var(--teal-dark);}
+
+  .layout{display:flex;align-items:flex-start;min-height:calc(100vh - 78px);}
+
+  aside.notebook{
+    width:300px;flex:none;background:var(--paper-2);
+    border-right:2px solid var(--ink);padding:20px;
+    position:sticky;top:0;align-self:flex-start;
+    max-height:100vh;overflow-y:auto;
+  }
+  aside.notebook h2{
+    font-family:var(--serif);font-size:15px;margin:22px 0 8px 0;
+    border-bottom:1px solid var(--line);padding-bottom:6px;
+  }
+  aside.notebook h2:first-child{margin-top:0;}
+  aside.notebook label{display:block;font-size:12.5px;color:var(--muted);margin:10px 0 3px 0;}
+  aside.notebook input[type=text],
+  aside.notebook input[type=password],
+  aside.notebook input[type=number],
+  aside.notebook select{
+    width:100%;padding:7px 8px;border:1px solid var(--line);border-radius:3px;
+    font-size:13px;background:#fff;font-family:var(--sans);color:var(--ink);
+  }
+  aside.notebook .row2{display:flex;gap:8px;}
+  aside.notebook .row2 > div{flex:1;}
+  aside.notebook button{
+    font-family:var(--sans);font-size:13px;cursor:pointer;border-radius:3px;
+    border:1px solid var(--teal);background:#fff;color:var(--teal-dark);
+    padding:7px 10px;margin-top:8px;
+  }
+  aside.notebook button.primary{background:var(--teal);color:#fff;border-color:var(--teal);}
+  aside.notebook button.primary:hover{background:var(--teal-dark);}
+  aside.notebook button.ghost{border-color:var(--line);color:var(--muted);}
+  aside.notebook .hint{font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.4;}
+  aside.notebook .life-status{
+    font-size:12.5px;background:#fff;border:1px solid var(--line);
+    border-radius:3px;padding:8px;margin-top:8px;
+  }
+  aside.notebook .life-status strong{color:var(--moss);}
+  aside.notebook .toggle-row{display:flex;align-items:center;gap:8px;margin-top:8px;}
+  aside.notebook .toggle-row input{width:auto;}
+  aside.notebook details{margin-top:18px;border-top:1px solid var(--line);padding-top:10px;}
+  aside.notebook details summary{cursor:pointer;font-size:13px;color:var(--teal-dark);}
+  aside.notebook details p, aside.notebook details ol{font-size:12.5px;color:var(--muted);line-height:1.5;}
+
+  main{flex:1;padding:20px 26px;min-width:0;}
+  .view-toggle{display:flex;gap:6px;margin-bottom:16px;}
+  .view-toggle button{
+    font-family:var(--sans);font-size:13px;padding:7px 14px;border-radius:3px;
+    border:1px solid var(--line);background:#fff;color:var(--muted);cursor:pointer;
+  }
+  .view-toggle button.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+
+  #map{height:520px;border:1px solid var(--line);border-radius:4px;display:none;}
+  #map.visible{display:block;}
+
+  #feed{display:none;flex-direction:column;gap:10px;}
+  #feed.visible{display:flex;}
+
+  .empty{
+    border:1px dashed var(--line);border-radius:4px;padding:30px;text-align:center;
+    color:var(--muted);font-size:14px;
+  }
+
+  .card{
+    background:var(--paper-2);border:1px solid var(--line);border-left:4px solid var(--moss);
+    border-radius:3px;padding:14px 16px;display:flex;justify-content:space-between;gap:16px;
+    flex-wrap:wrap;
+  }
+  .card.notable{border-left-color:var(--flame);}
+  .card.is-new{box-shadow:0 0 0 1px var(--flame) inset;}
+  .card .main{flex:1;min-width:220px;}
+  .card .common{font-family:var(--serif);font-size:17px;margin:0 0 2px 0;}
+  .card .sci{font-size:12.5px;color:var(--muted);font-style:italic;margin:0 0 8px 0;}
+  .card .meta{font-size:13px;color:var(--ink);line-height:1.6;}
+  .card .meta .loc{color:var(--muted);}
+  .badge{
+    display:inline-block;font-size:11px;padding:2px 7px;border-radius:10px;
+    margin-left:8px;vertical-align:middle;
+  }
+  .badge.new{background:var(--flame);color:#fff;}
+  .badge.notable{background:var(--moss);color:#fff;}
+  .card .actions{display:flex;flex-direction:column;gap:6px;justify-content:center;}
+  .card .actions a, .card .actions button{
+    font-family:var(--sans);font-size:12.5px;text-align:center;text-decoration:none;
+    padding:7px 12px;border-radius:3px;cursor:pointer;white-space:nowrap;
+  }
+  .wa-btn{background:#1F6F64;color:#fff;border:none;}
+  .wa-btn:hover{background:var(--teal-dark);}
+  .map-link{border:1px solid var(--line);color:var(--muted);background:#fff;}
+  .checklist-link{border:1px solid var(--line);color:var(--muted);background:#fff;}
+
+  .error-box{
+    background:#fbecea;border:1px solid var(--flame);color:#7a2b22;
+    padding:12px 14px;border-radius:4px;font-size:13px;margin-bottom:14px;line-height:1.5;
+  }
+  footer.note{padding:18px 26px 40px 26px;font-size:12px;color:var(--muted);border-top:1px solid var(--line);}
+
+  @media (max-width:820px){
+    .layout{flex-direction:column;}
+    aside.notebook{width:100%;position:relative;border-right:none;border-bottom:2px solid var(--ink);max-height:none;}
+    header.masthead{flex-direction:column;align-items:flex-start;gap:8px;}
+  }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div>
+    <h1>Bitácora de avistamientos</h1>
+    <div class="sub">Alertas de eBird para Chile, con mapa y aviso directo por WhatsApp</div>
+  </div>
+  <div class="status">
+    <div id="lastUpdate">Sin datos aún</div>
+    <div id="nextUpdate"></div>
+    <button class="refresh" id="btnRefresh">Actualizar ahora</button>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="notebook">
+
+    <h2>Qué monitorear</h2>
+    <label for="region">Región</label>
+    <select id="region">
+      <option value="CL">Todo Chile</option>
+      <option value="CL-AP">Arica y Parinacota</option>
+      <option value="CL-TA">Tarapacá</option>
+      <option value="CL-AN">Antofagasta</option>
+      <option value="CL-AT">Atacama</option>
+      <option value="CL-CO">Coquimbo</option>
+      <option value="CL-VS">Valparaíso</option>
+      <option value="CL-RM">Metropolitana de Santiago</option>
+      <option value="CL-LI">O'Higgins</option>
+      <option value="CL-ML">Maule</option>
+      <option value="CL-NB">Ñuble</option>
+      <option value="CL-BI">Biobío</option>
+      <option value="CL-AR">Araucanía</option>
+      <option value="CL-LR">Los Ríos</option>
+      <option value="CL-LL">Los Lagos</option>
+      <option value="CL-AI">Aysén</option>
+      <option value="CL-MA">Magallanes</option>
+      <option value="__custom">Otro (código personalizado)…</option>
+    </select>
+    <div id="customRegionWrap" style="display:none;margin-top:8px;">
+      <label for="customRegion">Código de región eBird</label>
+      <input type="text" id="customRegion" placeholder="Ej: CL-RM-4104 (comuna de Santiago)">
+      <div class="hint">Busca el código exacto de una comuna en
+        <a href="https://ebird.org/region/CL" target="_blank" rel="noopener">ebird.org/region</a>.</div>
+    </div>
+
+    <label for="mode">Qué avistamientos traer</label>
+    <select id="mode">
+      <option value="notable">Solo especies raras / notables</option>
+      <option value="all">Todas las especies</option>
+    </select>
+    <div class="hint" id="modeHint">Recomendado para "todo Chile": si eliges "todas las especies" a nivel país, la lista puede ser enorme — mejor usar un código de región más pequeño.</div>
+
+    <div class="row2">
+      <div>
+        <label for="backDays">Días hacia atrás</label>
+        <input type="number" id="backDays" min="1" max="14" value="2">
+      </div>
+      <div>
+        <label for="interval">Revisar cada</label>
+        <select id="interval">
+          <option value="5">5 min</option>
+          <option value="10" selected>10 min</option>
+          <option value="15">15 min</option>
+          <option value="30">30 min</option>
+        </select>
+      </div>
+    </div>
+
+    <h2>Punto de referencia (opcional)</h2>
+    <div class="row2">
+      <div><label for="homeLat">Latitud</label><input type="text" id="homeLat" placeholder="-33.45"></div>
+      <div><label for="homeLng">Longitud</label><input type="text" id="homeLng" placeholder="-70.66"></div>
+    </div>
+    <div class="hint">Se usa para ordenar los avistamientos por cercanía a tu casa o punto de salida.</div>
+
+    <h2>Tu lista vitalicia</h2>
+    <input type="file" id="lifeListFile" accept=".csv">
+    <div class="hint">Descárgala en My eBird → Life List → Download, y súbela aquí para resaltar las especies que aún no tienes.</div>
+    <div class="life-status" id="lifeStatus">Ninguna lista cargada todavía.</div>
+    <button class="ghost" id="btnClearLifeList">Quitar lista</button>
+
+    <h2>Aviso por WhatsApp</h2>
+    <label for="friendPhone">Número de tu compañero (opcional, con código de país)</label>
+    <input type="text" id="friendPhone" placeholder="Ej: 56912345678">
+    <div class="hint">Si lo dejas vacío, el botón "Enviar por WhatsApp" te deja elegir el chat o grupo al enviar.</div>
+    <div class="toggle-row">
+      <input type="checkbox" id="notifToggle">
+      <label for="notifToggle" style="margin:0;">Avisarme también con una notificación del navegador</label>
+    </div>
+
+    <button class="primary" id="btnSave" style="width:100%;margin-top:16px;">Guardar y actualizar</button>
+
+    <details>
+      <summary>Cómo funciona esto</summary>
+      <ol>
+        <li>La clave de eBird ya viene incluida en este archivo, así que ni tú ni tu amigo necesitan escribirla.</li>
+        <li>Elige región y filtro, y presiona "Guardar y actualizar".</li>
+        <li>El sitio revisa eBird automáticamente mientras esta pestaña esté abierta.</li>
+        <li>Cada avistamiento nuevo trae un botón para mandarlo por WhatsApp con un clic.</li>
+        <li>Si cierras la pestaña, las revisiones se detienen — no hay envío automático en segundo plano, eso requeriría un servidor aparte.</li>
+      </ol>
+    </details>
+  </aside>
+
+  <main>
+    <div id="errorBox"></div>
+    <div class="view-toggle">
+      <button id="tabMap" class="active">Mapa</button>
+      <button id="tabList">Lista</button>
+      <button id="btnMarkSeen" class="ghost" style="margin-left:auto;border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:3px;padding:7px 14px;cursor:pointer;">Marcar todo como visto</button>
+    </div>
+
+    <div id="map"></div>
+    <div id="feed"></div>
+  </main>
+</div>
+
+<footer class="note">
+  Esta página guarda todos los datos (tu API key, tu lista vitalicia, tus preferencias) únicamente en el navegador de este dispositivo — nada se envía a un servidor externo salvo las consultas directas a la API pública de eBird. Si tú y tu compañero usan esto, cada uno lo hace desde su propio dispositivo con su propia información.
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+(function(){
+  'use strict';
+
+  // ==========================================================
+  // Pega aquí tu API key de eBird UNA SOLA VEZ, antes de guardar
+  // este archivo o compartirlo con tu amigo. Consíguela gratis en
+  // https://ebird.org/api/keygen
+  // ==========================================================
+  var EMBEDDED_API_KEY = 'PEGA_AQUI_TU_API_KEY';
+
+  var STORAGE_KEY = 'ebirdAlertasChile_v1';
+  var state = loadState();
+  var map, markerLayer;
+  var pollTimer = null, countdownTimer = null, nextRunAt = null;
+  var currentView = 'map';
+
+  // ---------- persistence ----------
+  function loadState(){
+    var raw = localStorage.getItem(STORAGE_KEY);
+    var def = {
+      apiKey:EMBEDDED_API_KEY, region:'CL', mode:'notable', backDays:2, interval:10,
+      homeLat:'', homeLng:'', friendPhone:'', notifEnabled:false,
+      lifeList:[], lifeListUploadedAt:null, seenSubIds:[]
+    };
+    if(!raw) return def;
+    try{ return Object.assign(def, JSON.parse(raw)); }catch(e){ return def; }
+  }
+  function saveState(){
+    // cap seenSubIds so storage doesn't grow forever
+    if(state.seenSubIds.length > 800){
+      state.seenSubIds = state.seenSubIds.slice(-500);
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+
+  // ---------- form <-> state ----------
+  function fillForm(){
+    var presetCodes = ['CL','CL-AP','CL-TA','CL-AN','CL-AT','CL-CO','CL-VS','CL-RM','CL-LI','CL-ML','CL-NB','CL-BI','CL-AR','CL-LR','CL-LL','CL-AI','CL-MA'];
+    if(presetCodes.indexOf(state.region) > -1){
+      document.getElementById('region').value = state.region;
+      document.getElementById('customRegionWrap').style.display = 'none';
+    } else {
+      document.getElementById('region').value = '__custom';
+      document.getElementById('customRegion').value = state.region;
+      document.getElementById('customRegionWrap').style.display = 'block';
+    }
+    document.getElementById('mode').value = state.mode;
+    document.getElementById('backDays').value = state.backDays;
+    document.getElementById('interval').value = state.interval;
+    document.getElementById('homeLat').value = state.homeLat;
+    document.getElementById('homeLng').value = state.homeLng;
+    document.getElementById('friendPhone').value = state.friendPhone;
+    document.getElementById('notifToggle').checked = !!state.notifEnabled;
+    renderLifeStatus();
+  }
+  function readForm(){
+    var regionSel = document.getElementById('region').value;
+    state.region = regionSel === '__custom' ?
+      (document.getElementById('customRegion').value.trim() || 'CL') : regionSel;
+    state.mode = document.getElementById('mode').value;
+    state.backDays = Math.min(14, Math.max(1, parseInt(document.getElementById('backDays').value,10) || 2));
+    state.interval = parseInt(document.getElementById('interval').value,10);
+    state.homeLat = document.getElementById('homeLat').value.trim();
+    state.homeLng = document.getElementById('homeLng').value.trim();
+    state.friendPhone = document.getElementById('friendPhone').value.trim().replace(/[^0-9]/g,'');
+    state.notifEnabled = document.getElementById('notifToggle').checked;
+    saveState();
+  }
+
+  function renderLifeStatus(){
+    var box = document.getElementById('lifeStatus');
+    if(state.lifeList && state.lifeList.length){
+      box.innerHTML = '<strong>'+state.lifeList.length+'</strong> especies cargadas' +
+        (state.lifeListUploadedAt ? ' · subida el '+new Date(state.lifeListUploadedAt).toLocaleDateString('es-CL') : '');
+    } else {
+      box.textContent = 'Ninguna lista cargada todavía.';
+    }
+  }
+
+  // ---------- CSV parsing (life list) ----------
+  function parseCSV(text){
+    var lines = text.split(/\r\n|\n|\r/).filter(function(l){return l.trim().length;});
+    if(!lines.length) return [];
+    var headers = splitCSVLine(lines[0]).map(function(h){return h.trim().toLowerCase();});
+    var sciIdx = headers.findIndex(function(h){return h.indexOf('scientific')>-1;});
+    var comIdx = headers.findIndex(function(h){return h.indexOf('common name')>-1 || h==='species';});
+    var result = [];
+    var seen = {};
+    for(var i=1;i<lines.length;i++){
+      var cols = splitCSVLine(lines[i]);
+      var sci = sciIdx>-1 ? (cols[sciIdx]||'').trim() : '';
+      var com = comIdx>-1 ? (cols[comIdx]||'').trim() : '';
+      var key = (sci || com).toLowerCase();
+      if(!key || seen[key]) continue;
+      seen[key] = true;
+      result.push({sci: sci.toLowerCase(), common: normalizeText(com)});
+    }
+    return result;
+  }
+  function splitCSVLine(line){
+    var out = [], cur = '', inQuotes = false;
+    for(var i=0;i<line.length;i++){
+      var ch = line[i];
+      if(ch === '"'){ inQuotes = !inQuotes; continue; }
+      if(ch === ',' && !inQuotes){ out.push(cur); cur=''; continue; }
+      cur += ch;
+    }
+    out.push(cur);
+    return out;
+  }
+  function normalizeText(t){
+    return (t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+  }
+  function isInLifeList(obs){
+    if(!state.lifeList.length) return false;
+    var sci = (obs.sciName||'').toLowerCase();
+    var com = normalizeText(obs.comName||'');
+    return state.lifeList.some(function(item){
+      if(item.sci && sci && item.sci === sci) return true;
+      if(item.common && com && item.common === com) return true;
+      return false;
+    });
+  }
+
+  document.getElementById('lifeListFile').addEventListener('change', function(e){
+    var file = e.target.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(ev){
+      var parsed = parseCSV(ev.target.result);
+      state.lifeList = parsed;
+      state.lifeListUploadedAt = Date.now();
+      saveState();
+      renderLifeStatus();
+      renderCurrentData();
+    };
+    reader.readAsText(file);
+  });
+  document.getElementById('btnClearLifeList').addEventListener('click', function(){
+    state.lifeList = [];
+    state.lifeListUploadedAt = null;
+    saveState();
+    renderLifeStatus();
+    renderCurrentData();
+  });
+
+  // ---------- map ----------
+  function initMap(){
+    map = L.map('map', {scrollWheelZoom:true}).setView([-33.45,-70.66], 5);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+    markerLayer = L.layerGroup().addTo(map);
+  }
+
+  // ---------- fetching ----------
+  var lastObservations = [];
+
+  function buildUrl(){
+    var base = 'https://api.ebird.org/v2/data/obs/' + encodeURIComponent(state.region) + '/recent';
+    if(state.mode === 'notable') base += '/notable';
+    var params = ['back='+state.backDays, 'locale=es', 'key='+encodeURIComponent(state.apiKey)];
+    if(state.mode === 'all') params.push('maxResults=300');
+    return base + '?' + params.join('&');
+  }
+  function proxyUrl(url){
+    return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+  }
+
+  function fetchObservations(manual){
+    var box = document.getElementById('errorBox');
+    box.innerHTML = '';
+    if(!state.apiKey || state.apiKey === 'PEGA_AQUI_TU_API_KEY'){
+      box.innerHTML = '<div class="error-box">Este archivo todavía no tiene una API key de eBird incrustada. Abre el archivo con un editor de texto, busca la línea que dice EMBEDDED_API_KEY y reemplaza "PEGA_AQUI_TU_API_KEY" por tu clave (gratis en ebird.org/api/keygen). Luego guarda el archivo y ábrelo de nuevo.</div>';
+      scheduleNext();
+      return;
+    }
+    document.getElementById('lastUpdate').textContent = 'Actualizando…';
+    if(window.location.protocol === 'file:'){
+      box.innerHTML = '<div class="error-box">Este archivo se abrió directamente desde tu computador o celular (sin dirección https), y muchos navegadores bloquean por completo las conexiones a internet en ese modo. '+
+        'La solución es alojar este archivo en un sitio web real (por ejemplo GitHub Pages, gratis) y entrar desde ahí. Igual intentaremos la conexión por si tu navegador sí lo permite.</div>';
+    }
+    var directUrl = buildUrl();
+
+    fetch(directUrl)
+      .then(function(res){
+        if(!res.ok) throw new Error('HTTP '+res.status);
+        return res.json();
+      })
+      .then(function(data){ handleNewData(data, manual); })
+      .catch(function(directErr){
+        // reintento vía proxy, por si el bloqueo es de CORS
+        fetch(proxyUrl(directUrl))
+          .then(function(res){
+            if(!res.ok) throw new Error('HTTP '+res.status);
+            return res.json();
+          })
+          .then(function(data){ handleNewData(data, manual); })
+          .catch(function(proxyErr){
+            box.innerHTML = '<div class="error-box">No se pudo obtener datos de eBird ni de forma directa ni por el intermediario. '+
+              'Revisa que tu API key y el código de región sean correctos. Detalle técnico: '+escapeHtml(directErr.message)+' / '+escapeHtml(proxyErr.message)+'.</div>';
+            document.getElementById('lastUpdate').textContent = 'Falló la última actualización';
+          });
+      })
+      .finally(function(){
+        scheduleNext();
+      });
+  }
+
+  function handleNewData(data, manual){
+    var seenSet = {};
+    state.seenSubIds.forEach(function(id){ seenSet[id]=true; });
+
+    data.forEach(function(obs){
+      obs._isNew = !seenSet[obs.subId];
+      obs._inLifeList = isInLifeList(obs);
+    });
+
+    var hasHome = state.homeLat && state.homeLng && !isNaN(parseFloat(state.homeLat)) && !isNaN(parseFloat(state.homeLng));
+    if(hasHome){
+      var hLat = parseFloat(state.homeLat), hLng = parseFloat(state.homeLng);
+      data.forEach(function(obs){ obs._dist = haversine(hLat,hLng,obs.lat,obs.lng); });
+      data.sort(function(a,b){ return a._dist - b._dist; });
+    } else {
+      data.sort(function(a,b){ return new Date(b.obsDt) - new Date(a.obsDt); });
+    }
+
+    var newOnes = data.filter(function(o){ return o._isNew; });
+    if(newOnes.length && state.notifEnabled && 'Notification' in window && Notification.permission === 'granted'){
+      var first = newOnes[0];
+      new Notification('Nuevo avistamiento: '+first.comName, {
+        body: first.locName + (newOnes.length>1 ? ' y '+(newOnes.length-1)+' más' : '')
+      });
+    }
+
+    data.forEach(function(obs){ seenSet[obs.subId]=true; });
+    state.seenSubIds = Object.keys(seenSet);
+    saveState();
+
+    lastObservations = data;
+    document.getElementById('lastUpdate').textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-CL');
+    renderCurrentData();
+  }
+
+  function haversine(lat1,lon1,lat2,lon2){
+    var R=6371, dLat=(lat2-lat1)*Math.PI/180, dLon=(lon2-lon1)*Math.PI/180;
+    var a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);
+    return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+  }
+
+  function scheduleNext(){
+    clearTimeout(pollTimer);
+    clearInterval(countdownTimer);
+    var ms = state.interval*60*1000;
+    nextRunAt = Date.now()+ms;
+    pollTimer = setTimeout(function(){ fetchObservations(false); }, ms);
+    countdownTimer = setInterval(updateCountdown, 1000);
+    updateCountdown();
+  }
+  function updateCountdown(){
+    var remaining = Math.max(0, Math.round((nextRunAt-Date.now())/1000));
+    var m = Math.floor(remaining/60), s = remaining%60;
+    document.getElementById('nextUpdate').textContent = 'Próxima revisión en ' + m + ':' + (s<10?'0':'')+s;
+  }
+
+  // ---------- rendering ----------
+  function renderCurrentData(){
+    renderMapMarkers(lastObservations);
+    renderFeed(lastObservations);
+  }
+
+  function renderMapMarkers(data){
+    if(!markerLayer) return;
+    markerLayer.clearLayers();
+    if(!data.length) return;
+    var bounds = [];
+    data.forEach(function(obs){
+      if(typeof obs.lat !== 'number' || typeof obs.lng !== 'number') return;
+      var color = obs._inLifeList===false && state.lifeList.length ? '#C94A3D' : '#1F6F64';
+      var marker = L.circleMarker([obs.lat,obs.lng], {
+        radius: 7, color: color, fillColor: color, fillOpacity: 0.85, weight: 1.5
+      });
+      marker.bindPopup(popupHtml(obs));
+      marker.addTo(markerLayer);
+      bounds.push([obs.lat,obs.lng]);
+    });
+    if(bounds.length) map.fitBounds(bounds, {padding:[30,30], maxZoom:11});
+  }
+
+  function popupHtml(obs){
+    var newBadge = obs._isNew ? ' <span class="badge new">Nuevo</span>' : '';
+    var lifeBadge = (state.lifeList.length && !obs._inLifeList) ? ' <span class="badge notable">Nuevo para ti</span>' : '';
+    return '<div style="font-family:Georgia,serif;font-size:14px;margin-bottom:2px;">'+escapeHtml(obs.comName)+newBadge+lifeBadge+'</div>'+
+      '<div style="font-size:12px;color:#5B6A5D;font-style:italic;">'+escapeHtml(obs.sciName)+'</div>'+
+      '<div style="font-size:12.5px;margin-top:6px;">'+escapeHtml(obs.locName)+'<br>'+formatDate(obs.obsDt)+'</div>'+
+      '<a href="'+whatsappLink(obs)+'" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;background:#1F6F64;color:#fff;padding:5px 10px;border-radius:3px;text-decoration:none;font-size:12px;">Enviar por WhatsApp</a>';
+  }
+
+  function renderFeed(data){
+    var feed = document.getElementById('feed');
+    if(!data.length){
+      feed.innerHTML = '<div class="empty">Todavía no hay avistamientos que mostrar. Guarda tu configuración o espera al próximo ciclo de revisión.</div>';
+      return;
+    }
+    feed.innerHTML = data.map(cardHtml).join('');
+  }
+
+  function cardHtml(obs){
+    var classes = 'card' + (state.mode==='notable' ? ' notable' : '') + (obs._isNew ? ' is-new' : '');
+    var newBadge = obs._isNew ? '<span class="badge new">Nuevo</span>' : '';
+    var lifeBadge = (state.lifeList.length && !obs._inLifeList) ? '<span class="badge notable">Nuevo para ti</span>' : '';
+    var distTxt = (typeof obs._dist === 'number') ? (' · ' + obs._dist.toFixed(1) + ' km de tu punto') : '';
+    var mapUrl = 'https://www.google.com/maps?q='+obs.lat+','+obs.lng;
+    var checklistUrl = 'https://ebird.org/checklist/'+obs.subId;
+    return '<div class="'+classes+'">'+
+      '<div class="main">'+
+        '<p class="common">'+escapeHtml(obs.comName)+' '+newBadge+' '+lifeBadge+'</p>'+
+        '<p class="sci">'+escapeHtml(obs.sciName)+'</p>'+
+        '<div class="meta"><span class="loc">'+escapeHtml(obs.locName)+'</span>'+distTxt+'<br>'+
+        formatDate(obs.obsDt)+(obs.howMany ? ' · '+obs.howMany+' ejemplar(es)' : '')+'</div>'+
+      '</div>'+
+      '<div class="actions">'+
+        '<a class="wa-btn" href="'+whatsappLink(obs)+'" target="_blank" rel="noopener">Enviar por WhatsApp</a>'+
+        '<a class="map-link" href="'+mapUrl+'" target="_blank" rel="noopener">Ver en el mapa</a>'+
+        '<a class="checklist-link" href="'+checklistUrl+'" target="_blank" rel="noopener">Ver checklist en eBird</a>'+
+      '</div>'+
+    '</div>';
+  }
+
+  function whatsappLink(obs){
+    var msg = '🐦 '+obs.comName+' ('+obs.sciName+')\n'+
+      '📍 '+obs.locName+'\n'+
+      '🕒 '+formatDate(obs.obsDt)+
+      (obs.howMany ? '\n🔢 '+obs.howMany+' ejemplar(es)' : '')+
+      '\n🗺️ https://www.google.com/maps?q='+obs.lat+','+obs.lng+
+      '\n📋 https://ebird.org/checklist/'+obs.subId;
+    var encoded = encodeURIComponent(msg);
+    return state.friendPhone ?
+      'https://wa.me/'+state.friendPhone+'?text='+encoded :
+      'https://wa.me/?text='+encoded;
+  }
+
+  function formatDate(d){
+    var dt = new Date(d.replace(' ','T'));
+    if(isNaN(dt.getTime())) return d;
+    return dt.toLocaleString('es-CL', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  }
+
+  function escapeHtml(s){
+    return (s==null?'':String(s)).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  // ---------- view toggle ----------
+  function setView(v){
+    currentView = v;
+    document.getElementById('map').classList.toggle('visible', v==='map');
+    document.getElementById('feed').classList.toggle('visible', v==='list');
+    document.getElementById('tabMap').classList.toggle('active', v==='map');
+    document.getElementById('tabList').classList.toggle('active', v==='list');
+    if(v==='map' && map){ setTimeout(function(){ map.invalidateSize(); }, 50); }
+  }
+  document.getElementById('tabMap').addEventListener('click', function(){ setView('map'); });
+  document.getElementById('tabList').addEventListener('click', function(){ setView('list'); });
+
+  document.getElementById('region').addEventListener('change', function(e){
+    document.getElementById('customRegionWrap').style.display = e.target.value === '__custom' ? 'block' : 'none';
+  });
+
+  document.getElementById('mode').addEventListener('change', function(e){
+    var hint = document.getElementById('modeHint');
+    hint.style.display = e.target.value === 'all' ? 'block' : 'none';
+  });
+
+  document.getElementById('btnMarkSeen').addEventListener('click', function(){
+    lastObservations.forEach(function(o){ o._isNew = false; });
+    var seenSet = {};
+    state.seenSubIds.forEach(function(id){ seenSet[id]=true; });
+    lastObservations.forEach(function(o){ seenSet[o.subId]=true; });
+    state.seenSubIds = Object.keys(seenSet);
+    saveState();
+    renderCurrentData();
+  });
+
+  document.getElementById('btnRefresh').addEventListener('click', function(){
+    fetchObservations(true);
+  });
+
+  document.getElementById('btnSave').addEventListener('click', function(){
+    readForm();
+    if(state.notifEnabled && 'Notification' in window && Notification.permission === 'default'){
+      Notification.requestPermission();
+    }
+    fetchObservations(true);
+  });
+
+  // ---------- init ----------
+  fillForm();
+  initMap();
+  setView('map');
+  document.getElementById('modeHint').style.display = state.mode==='all' ? 'block' : 'none';
+  if(state.apiKey && state.apiKey !== 'PEGA_AQUI_TU_API_KEY'){
+    fetchObservations(false);
+  } else {
+    document.getElementById('errorBox').innerHTML = '<div class="error-box">Este archivo todavía no tiene una API key de eBird incrustada. Edita la línea EMBEDDED_API_KEY en el código con tu clave (gratis en ebird.org/api/keygen), guarda el archivo y ábrelo de nuevo.</div>';
+    scheduleNext();
+  }
+
+})();
+</script>
+</body>
+</html>
