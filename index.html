@@ -305,7 +305,7 @@
   // ==========================================================
   var EMBEDDED_API_KEY = '89f4bf7f-47ac-4e68-949f-de69c890bce7';
 
-  var STORAGE_KEY = 'ebirdAlertasChile_v6'; // Actualizado para resetear con la UI simplificada
+  var STORAGE_KEY = 'ebirdAlertasChile_v6';
   var state = loadState();
   var IMAGE_CACHE_KEY = 'ebirdAlertasChile_images_v1';
   var imageCache = loadImageCache();
@@ -396,7 +396,7 @@
     }
   }
 
-  // ---------- CSV parsing (Modo Global Simplificado) ----------
+  // ---------- CSV parsing ----------
   function parseCSV(text){
     var lines = text.split(/\r\n|\n|\r/).filter(function(l){return l.trim().length;});
     if(!lines.length) return [];
@@ -547,7 +547,8 @@
     var base = 'https://api.ebird.org/v2/data/obs/' + encodeURIComponent(state.region) + '/recent';
     if(state.mode === 'notable') base += '/notable';
     var nameLocale = (state.nameLocale === 'sci') ? 'es-CL' : state.nameLocale;
-    var params = ['back='+state.backDays, 'sppLocale='+nameLocale, 'key='+encodeURIComponent(state.apiKey)];
+    // Agregamos detail=full para que eBird entregue comentarios y nombres
+    var params = ['back='+state.backDays, 'sppLocale='+nameLocale, 'detail=full', 'key='+encodeURIComponent(state.apiKey)];
     if(state.mode === 'all') params.push('maxResults=300');
     if(state.includeProvisional) params.push('includeProvisional=true');
     return base + '?' + params.join('&');
@@ -597,12 +598,6 @@
     data.forEach(function(obs){
       obs._isNew = !seenSet[obs.subId];
       obs._inLifeList = isInLifeList(obs);
-      
-      // EL FIX DE LA LOICA:
-      // Ahora solo se marca como "No confirmado" si el registro realmente falló la validación
-      // de eBird (es decir, hizo saltar el filtro porque es una rareza real o un conteo anormal).
-      // Los registros normales (que están esperando revisión pero no violan los filtros) 
-      // ya no aparecerán con la etiqueta naranja.
       obs._unconfirmed = (obs.obsValid === false); 
     });
 
@@ -696,6 +691,10 @@
     var lifeBadge = (state.lifeList.length && !obs._inLifeList) ? ' <span class="badge notable">Nuevo para ti</span>' : '';
     var unconfirmedBadge = obs._unconfirmed ? ' <span class="badge unconfirmed">Rareza en revisión</span>' : '';
     var photoId = 'popup-photo-' + safeId(obs.subId + obs.speciesCode);
+    
+    // Extracción de nombre de observador
+    var observer = escapeHtml(obs.userDisplayName || (obs.firstName ? obs.firstName + ' ' + obs.lastName : 'Observador de eBird'));
+
     return '<div style="display:flex;gap:8px;">'+
       '<div id="'+photoId+'" style="width:56px;height:56px;flex:none;border-radius:4px;overflow:hidden;background:#E9ECE4;border:1px solid #C9CBB8;"></div>'+
       '<div>'+
@@ -703,7 +702,7 @@
         '<div style="font-size:12px;color:#5B6A5D;font-style:italic;">'+escapeHtml(secondaryLine(obs))+'</div>'+
       '</div>'+
     '</div>'+
-      '<div style="font-size:12.5px;margin-top:6px;">'+escapeHtml(obs.locName)+'<br>'+formatDate(obs.obsDt)+'</div>'+
+      '<div style="font-size:12.5px;margin-top:6px;">📍 '+escapeHtml(obs.locName)+'<br>🕒 '+formatDate(obs.obsDt)+'<br>👤 '+observer+'</div>'+
       '<a href="'+whatsappLink(obs)+'" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;background:#1F6F64;color:#fff;padding:5px 10px;border-radius:3px;text-decoration:none;font-size:12px;">Enviar por WhatsApp</a>';
   }
 
@@ -726,13 +725,20 @@
     var mapUrl = 'https://www.google.com/maps?q='+obs.lat+','+obs.lng;
     var checklistUrl = 'https://ebird.org/checklist/'+obs.subId;
     var photoId = 'photo-' + safeId(obs.subId + obs.speciesCode);
+    
+    // Extracción de nombre de observador y comentarios
+    var observer = escapeHtml(obs.userDisplayName || (obs.firstName ? obs.firstName + ' ' + obs.lastName : 'Observador de eBird'));
+    var commentsHtml = obs.comments ? '<div style="margin-top:8px;font-size:12px;color:var(--muted);background:var(--paper);padding:8px;border-left:2px solid var(--line);border-radius:0 3px 3px 0;">💬 <i>"' + escapeHtml(obs.comments) + '"</i></div>' : '';
+
     return '<div class="'+classes+'">'+
       '<div class="photo-wrap empty" id="'+photoId+'"></div>'+
       '<div class="main">'+
         '<p class="common">'+escapeHtml(primaryName(obs))+' '+newBadge+' '+lifeBadge+' '+unconfirmedBadge+'</p>'+
         '<p class="sci">'+escapeHtml(secondaryLine(obs))+'</p>'+
         '<div class="meta"><span class="loc">'+escapeHtml(obs.locName)+'</span>'+distTxt+'<br>'+
-        formatDate(obs.obsDt)+(obs.howMany ? ' · '+obs.howMany+' ejemplar(es)' : '')+'</div>'+
+        formatDate(obs.obsDt)+(obs.howMany ? ' · '+obs.howMany+' ejemplar(es)' : '')+'<br>'+
+        '👤 '+observer+'</div>'+
+        commentsHtml +
       '</div>'+
       '<div class="actions">'+
         '<a class="wa-btn" href="'+whatsappLink(obs)+'" target="_blank" rel="noopener">Enviar por WhatsApp</a>'+
@@ -744,11 +750,14 @@
 
   function whatsappLink(obs){
     var nameLine = (state.nameLocale === 'sci') ? primaryName(obs) : (primaryName(obs)+' ('+obs.sciName+')');
+    var observer = obs.userDisplayName || (obs.firstName ? obs.firstName + ' ' + obs.lastName : 'Observador de eBird');
     var msg = '🐦 '+nameLine+'\n'+
       (obs._unconfirmed ? '⚠️ Rareza aún no confirmada\n' : '')+
       '📍 '+obs.locName+'\n'+
       '🕒 '+formatDate(obs.obsDt)+
       (obs.howMany ? '\n🔢 '+obs.howMany+' ejemplar(es)' : '')+
+      '\n👤 '+observer+
+      (obs.comments ? '\n💬 "'+obs.comments+'"' : '')+
       '\n🗺️ https://www.google.com/maps?q='+obs.lat+','+obs.lng+
       '\n📋 https://ebird.org/checklist/'+obs.subId;
     var encoded = encodeURIComponent(msg);
