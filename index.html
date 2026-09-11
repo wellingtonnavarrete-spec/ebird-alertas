@@ -245,7 +245,8 @@
     <h2>Nombres a mostrar</h2>
     <label for="nameLocale">Tipo de nombre</label>
     <select id="nameLocale">
-      <option value="es_CL">Español (Chile)</option>
+      <!-- MODIFICADO: es-CL en lugar de es_CL -->
+      <option value="es-CL">Español (Chile)</option>
       <option value="es">Español (general)</option>
       <option value="en">Inglés</option>
       <option value="sci">Solo nombre científico</option>
@@ -369,7 +370,8 @@
       apiKey:EMBEDDED_API_KEY, region:'CL', mode:'notable', backDays:2, interval:10,
       homeLat:'', homeLng:'', friendPhone:'', notifEnabled:false,
       lifeList:[], lifeListUploadedAt:null, seenSubIds:[],
-      nameLocale:'es_CL', includeProvisional:false
+      // MODIFICADO: es-CL en lugar de es_CL
+      nameLocale:'es-CL', includeProvisional:false
     };
     if(!raw) return def;
     try{ return Object.assign(def, JSON.parse(raw)); }catch(e){ return def; }
@@ -563,14 +565,18 @@
   function buildUrl(){
     var base = 'https://api.ebird.org/v2/data/obs/' + encodeURIComponent(state.region) + '/recent';
     if(state.mode === 'notable') base += '/notable';
-    // el nombre científico no depende de "locale"; para ese modo igual pedimos
-    // el común en español de Chile como referencia secundaria en las tarjetas.
-    var nameLocale = (state.nameLocale === 'sci') ? 'es_CL' : state.nameLocale;
-    var params = ['back='+state.backDays, 'locale='+nameLocale, 'key='+encodeURIComponent(state.apiKey)];
+    
+    // MODIFICADO: es-CL en lugar de es_CL
+    var nameLocale = (state.nameLocale === 'sci') ? 'es-CL' : state.nameLocale;
+    
+    // MODIFICADO: 'sppLocale=' en lugar de 'locale='
+    var params = ['back='+state.backDays, 'sppLocale='+nameLocale, 'key='+encodeURIComponent(state.apiKey)];
+    
     if(state.mode === 'all') params.push('maxResults=300');
     if(state.includeProvisional) params.push('includeProvisional=true');
     return base + '?' + params.join('&');
   }
+  
   function proxyUrl(url){
     return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
   }
