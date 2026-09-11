@@ -3,132 +3,145 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bitácora eBird · Original</title>
+<title>Bitácora eBird · Chile</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<!-- SDKs de Firebase -->
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore-compat.js"></script>
 <style>
   :root{
-    --bg:#0f172a;
-    --panel:#1e293b;
-    --panel-hover:#334155;
-    --text:#f8fafc;
-    --muted:#94a3b8;
-    --accent:#0ea5e9;
-    --accent-dark:#0284c7;
-    --danger:#f43f5e;
-    --warning:#f59e0b;
-    --border:#334155;
+    --ink:#16231F;
+    --paper:#E9ECE4;
+    --paper-2:#F4F5EF;
+    --moss:#45614A;
+    --teal:#1F6F64;
+    --teal-dark:#164F47;
+    --flame:#C94A3D;
+    --amber:#B8860B;
+    --line:#C9CBB8;
+    --muted:#5B6A5D;
+    --serif: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
     --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
   *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;}
+  html,body{margin:0;padding:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;}
   
+  /* Pantalla de Login */
   #authScreen{
-    position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg);
+    position:fixed;top:0;left:0;width:100%;height:100%;background:var(--paper);
     display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;
   }
   .auth-card{
-    background:var(--panel);border:1px solid var(--border);padding:24px;border-radius:8px;
-    width:100%;max-width:380px;box-shadow:0 8px 24px rgba(0,0,0,0.4);
+    background:var(--paper-2);border:1px solid var(--line);padding:24px;border-radius:6px;
+    width:100%;max-width:380px;box-shadow:0 8px 24px rgba(22,35,31,0.15);
   }
-  .auth-card h2{margin-top:0;font-size:20px;color:var(--accent);letter-spacing:0.5px;}
+  .auth-card h2{margin-top:0;font-size:20px;color:var(--teal-dark);font-family:var(--serif);}
   .auth-card label{display:block;font-size:12px;color:var(--muted);margin:12px 0 4px 0;}
   .auth-card input{
-    width:100%;padding:10px;background:#0f172a;border:1px solid var(--border);color:var(--text);
-    border-radius:4px;font-size:14px;
+    width:100%;padding:8px 10px;background:#fff;border:1px solid var(--line);color:var(--ink);
+    border-radius:3px;font-size:14px;
   }
-  .auth-card input:focus{outline:none;border-color:var(--accent);}
+  .auth-card input:focus{outline:none;border-color:var(--teal);}
   .auth-card button{
-    width:100%;padding:11px;background:var(--accent);color:#fff;border:none;border-radius:4px;
+    width:100%;padding:10px;background:var(--teal);color:#fff;border:none;border-radius:3px;
     font-weight:700;cursor:pointer;margin-top:14px;font-size:14px;
   }
-  .auth-card button:hover{background:var(--accent-dark);}
+  .auth-card button:hover{background:var(--teal-dark);}
   .auth-switch{text-align:center;font-size:12px;color:var(--muted);margin-top:14px;cursor:pointer;}
-  .auth-switch:hover{color:var(--accent);text-decoration:underline;}
+  .auth-switch:hover{color:var(--teal-dark);text-decoration:underline;}
 
+  /* App Principal */
   #appContainer{display:none;flex-direction:column;min-height:100vh;}
 
   header.masthead{
     display:flex;align-items:center;justify-content:space-between;
-    padding:12px 20px;background:var(--panel);border-bottom:1px solid var(--border);
+    padding:14px 24px;background:var(--paper-2);border-bottom:2px solid var(--ink);
     flex-wrap:wrap;gap:10px;
   }
-  header.masthead h1{font-size:17px;margin:0;font-weight:700;color:var(--accent);}
+  header.masthead h1{font-size:20px;margin:0;font-family:var(--serif);color:var(--ink);}
   header.masthead .user-info{font-size:12px;color:var(--muted);}
   header.masthead .actions-top{display:flex;gap:8px;align-items:center;}
   button.btn-sm{
-    background:#334155;color:var(--text);border:1px solid var(--border);
-    padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600;
+    background:#fff;color:var(--ink);border:1px solid var(--line);
+    padding:6px 12px;border-radius:3px;cursor:pointer;font-size:12px;font-weight:600;
   }
-  button.btn-sm:hover{background:var(--panel-hover);border-color:var(--accent);}
-  button.btn-danger{background:#4c0519;color:#fda4af;border-color:#881337;}
+  button.btn-sm:hover{background:var(--paper);border-color:var(--teal);}
+  button.btn-danger{background:#fbecea;color:var(--flame);border-color:var(--flame);}
 
+  /* Barra de Control Rápido Horizontal */
   .quick-bar{
-    background:#1e293b;padding:12px 20px;border-bottom:1px solid var(--border);
+    background:var(--paper-2);padding:10px 24px;border-bottom:1px solid var(--line);
     display:flex;flex-wrap:wrap;gap:12px;align-items:center;
   }
   .control-group{display:flex;flex-direction:column;gap:3px;flex:1;min-width:140px;}
   .control-group label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;}
   .control-group select, .control-group input[type="text"], .control-group input[type="number"]{
-    background:#0f172a;border:1px solid var(--border);color:var(--text);padding:7px 10px;
-    border-radius:4px;font-size:13px;width:100%;
+    background:#fff;border:1px solid var(--line);color:var(--ink);padding:6px 8px;
+    border-radius:3px;font-size:13px;width:100%;
   }
-  .control-group select:focus, input:focus{outline:none;border-color:var(--accent);}
+  .control-group select:focus, input:focus{outline:none;border-color:var(--teal);}
 
   .checkbox-group{display:flex;align-items:center;gap:6px;margin-top:4px;}
-  .checkbox-group input{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;}
-  .checkbox-group label{font-size:12px;color:var(--text);cursor:pointer;}
+  .checkbox-group input{width:14px;height:14px;accent-color:var(--teal);cursor:pointer;}
+  .checkbox-group label{font-size:12px;color:var(--ink);cursor:pointer;}
 
+  /* Layout Principal (Mapa + Feed) */
   .workspace{display:flex;flex:1;min-height:calc(100vh - 120px);}
   aside.sidebar{
-    width:380px;flex:none;background:var(--panel);border-right:1px solid var(--border);
+    width:340px;flex:none;background:var(--paper-2);border-right:1px solid var(--line);
     display:flex;flex-direction:column;height:calc(100vh - 120px);position:sticky;top:0;
   }
   .sidebar-header{
-    padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;
+    padding:12px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;
   }
   .view-tabs{display:flex;gap:4px;}
   .view-tabs button{
-    background:transparent;border:1px solid var(--border);color:var(--muted);padding:6px 14px;
-    border-radius:4px;cursor:pointer;font-size:12px;font-weight:600;
+    background:#fff;border:1px solid var(--line);color:var(--muted);padding:5px 12px;
+    border-radius:3px;cursor:pointer;font-size:12px;font-weight:600;
   }
-  .view-tabs button.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .view-tabs button.active{background:var(--ink);color:#fff;border-color:var(--ink);}
 
   .feed-list{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px;}
   
-  #map-container{flex:1;position:relative;background:#090d16;}
+  #map-container{flex:1;position:relative;background:#E9ECE4;}
   #map{width:100%;height:100%;min-height:400px;}
 
+  /* Tarjetas de Avistamiento */
   .card{
-    background:#0f172a;border:1px solid var(--border);border-left:3px solid var(--accent);
-    border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:8px;
+    background:var(--paper-2);border:1px solid var(--line);border-left:4px solid var(--moss);
+    border-radius:3px;padding:12px;display:flex;flex-direction:column;gap:8px;
     transition:border-color 0.2s;
   }
-  .card:hover{border-color:var(--accent);}
-  .card.notable{border-left-color:var(--warning);}
-  .card.unconfirmed{border-left-color:var(--danger);}
+  .card:hover{border-color:var(--teal);}
+  .card.notable{border-left-color:var(--flame);}
+  .card.unconfirmed{border-left-color:var(--amber);}
   
   .card-top{display:flex;gap:10px;align-items:flex-start;}
-  .card-thumb{width:50px;height:50px;border-radius:4px;background:#1e293b;flex:none;overflow:hidden;border:1px solid var(--border);}
+  .card-thumb{width:50px;height:50px;border-radius:4px;background:#fff;flex:none;overflow:hidden;border:1px solid var(--line);}
   .card-thumb img{width:100%;height:100%;object-fit:cover;}
   .card-thumb.empty::after{content:'\1F426';display:flex;align-items:center;justify-content:center;height:100%;font-size:20px;opacity:0.3;}
   
   .card-info{flex:1;min-width:0;}
-  .card-title{font-size:14px;font-weight:700;margin:0 0 2px 0;color:#fff;}
+  .card-title{font-size:14px;font-weight:700;margin:0 0 2px 0;font-family:var(--serif);color:var(--ink);}
   .card-sci{font-size:11.5px;color:var(--muted);font-style:italic;margin:0;}
   
-  .badge{display:inline-block;font-size:10px;padding:1px 5px;border-radius:3px;font-weight:700;margin-left:4px;vertical-align:middle;}
-  .badge.new{background:var(--danger);color:#fff;}
+  .badge{display:inline-block;font-size:10px;padding:2px 6px;border-radius:10px;font-weight:700;margin-left:4px;vertical-align:middle;}
+  .badge.new{background:var(--flame);color:#fff;}
+  .badge.notable{background:var(--moss);color:#fff;}
+  .badge.unconfirmed{background:var(--amber);color:#fff;}
   
   .card-meta{font-size:11.5px;color:var(--muted);line-height:1.4;}
-  .card-comment{font-size:11.5px;background:#1e293b;padding:6px 8px;border-radius:4px;border-left:2px solid var(--border);color:#cbd5e1;margin-top:4px;}
+  .card-comment{font-size:11.5px;background:#fff;padding:6px 8px;border-radius:3px;border-left:2px solid var(--line);color:var(--ink);margin-top:4px;}
   
   .card-actions{display:flex;gap:6px;margin-top:2px;}
   .card-actions a{
-    flex:1;text-align:center;background:#334155;color:var(--text);text-decoration:none;
-    padding:5px;border-radius:3px;font-size:11.5px;font-weight:600;border:1px solid var(--border);
+    flex:1;text-align:center;background:#fff;color:var(--ink);text-decoration:none;
+    padding:5px;border-radius:3px;font-size:11.5px;font-weight:600;border:1px solid var(--line);
   }
-  .card-actions a.wa{background:#065f46;color:#6ee7b7;border-color:#047857;}
-  .card-actions a:hover{opacity:0.85;}
+  .card-actions a.wa{background:var(--teal);color:#fff;border-color:var(--teal);}
+  .card-actions a.wa:hover{background:var(--teal-dark);}
+  .card-actions a:hover{background:var(--paper);}
 
   .status-text{font-size:11.5px;color:var(--muted);display:flex;flex-direction:column;text-align:right;}
   .empty-state{text-align:center;padding:40px 20px;color:var(--muted);font-size:13px;}
@@ -142,10 +155,11 @@
 </head>
 <body>
 
+<!-- Login Rápido -->
 <div id="authScreen">
   <div class="auth-card">
     <h2 id="authTitle">Acceso Bitácora</h2>
-    <div id="authError" style="color:var(--danger);font-size:12px;margin-bottom:8px;"></div>
+    <div id="authError" style="color:var(--flame);font-size:12px;margin-bottom:8px;"></div>
     <label>Correo</label>
     <input type="email" id="authEmail" placeholder="usuario@correo.com">
     <label>Contraseña</label>
@@ -155,11 +169,12 @@
   </div>
 </div>
 
+<!-- Aplicación Principal -->
 <div id="appContainer">
   <header class="masthead">
     <div>
-      <h1>Bitácora eBird</h1>
-      <div class="user-info">Conectado como: <span id="userEmailSpan" style="color:var(--accent);"></span></div>
+      <h1>Bitácora eBird · Chile</h1>
+      <div class="user-info">Conectado como: <span id="userEmailSpan" style="color:var(--teal-dark);font-weight:600;"></span></div>
     </div>
     <div class="actions-top">
       <div class="status-text">
@@ -171,6 +186,7 @@
     </div>
   </header>
 
+  <!-- Barra de Configuración Horizontal -->
   <div class="quick-bar">
     <div class="control-group" style="max-width:180px;">
       <label>Zona</label>
@@ -203,15 +219,15 @@
       </select>
     </div>
 
-    <div class="control-group" style="max-width:90px;">
-      <label>Días atrás</label>
+    <div class="control-group" style="max-width:80px;">
+      <label>Días</label>
       <input type="number" id="backDays" min="1" max="14" value="2">
     </div>
 
     <div class="control-group" style="max-width:110px;">
       <label>Nombres</label>
       <select id="nameLocale">
-        <option value="es-CL">Español (CL)</option>
+        <option value="es_CL">Español (CL)</option>
         <option value="es">Español</option>
         <option value="en">Inglés</option>
         <option value="sci">Científico</option>
@@ -220,12 +236,12 @@
 
     <div class="control-group" style="flex:2;min-width:200px;">
       <label>Lista CSV (Vitalicia)</label>
-      <input type="file" id="lifeListFile" accept=".csv" style="font-size:11.5px;padding:4px;">
+      <input type="file" id="lifeListFile" accept=".csv" style="font-size:11.5px;padding:3px;">
     </div>
 
-    <div class="control-group" style="max-width:160px;">
-      <label>WhatsApp Compañero</label>
-      <input type="text" id="friendPhone" placeholder="Ej: 56912345678">
+    <div class="control-group" style="max-width:150px;">
+      <label>WhatsApp Amigo</label>
+      <input type="text" id="friendPhone" placeholder="56912345678">
     </div>
 
     <div style="display:flex;flex-direction:column;gap:4px;">
@@ -239,13 +255,14 @@
       </div>
     </div>
 
-    <button class="btn-sm" id="btnSave" style="background:var(--accent);color:#fff;font-weight:700;padding:8px 16px;margin-top:auto;">Aplicar</button>
+    <button class="btn-sm" id="btnSave" style="background:var(--teal);color:#fff;font-weight:700;padding:7px 14px;margin-top:auto;border:none;">Aplicar</button>
   </div>
 
+  <!-- Workspace con Sidebar Feed y Mapa -->
   <div class="workspace">
     <aside class="sidebar">
       <div class="sidebar-header">
-        <span id="lifeStatus" style="font-size:11.5px;color:var(--muted);">Cargando...</span>
+        <span id="lifeStatus" style="font-size:11.5px;color:var(--muted);">Cargando lista...</span>
         <div class="view-tabs">
           <button id="tabFeed" class="active">Lista</button>
           <button id="tabMapToggle">Mapa</button>
@@ -283,10 +300,10 @@
   const EMBEDDED_API_KEY = '89f4bf7f-47ac-4e68-949f-de69c890bce7';
   let currentUser = null;
   
-  let cachedState = localStorage.getItem('ebird_fast_state');
+  let cachedState = localStorage.getItem('ebird_classic_state');
   let state = cachedState ? JSON.parse(cachedState) : {
     apiKey: EMBEDDED_API_KEY, region:'CL', mode:'notable', backDays:2, interval:10,
-    friendPhone:'', lifeList:[], hideSeen:false, nameLocale:'es-CL', includeProvisional:false, seenSubIds:[]
+    friendPhone:'', lifeList:[], hideSeen:false, nameLocale:'es_CL', includeProvisional:false, seenSubIds:[]
   };
 
   let map, markerLayer;
@@ -316,7 +333,7 @@
 
   document.getElementById('btnLogout').addEventListener('click', () => {
     signOut(auth).then(() => {
-      localStorage.removeItem('ebird_fast_state');
+      localStorage.removeItem('ebird_classic_state');
       location.reload();
     });
   });
@@ -338,7 +355,7 @@
           const data = docSnap.data();
           if(data.preferences) Object.assign(state, data.preferences);
           if(data.lifeList && data.lifeList.length > 0) state.lifeList = data.lifeList;
-          localStorage.setItem('ebird_fast_state', JSON.stringify(state));
+          localStorage.setItem('ebird_classic_state', JSON.stringify(state));
           fillForm();
           renderLifeStatus();
           renderCurrentData();
@@ -352,7 +369,7 @@
   });
 
   async function saveUserDataToCloud(){
-    localStorage.setItem('ebird_fast_state', JSON.stringify(state));
+    localStorage.setItem('ebird_classic_state', JSON.stringify(state));
     if(!currentUser) return;
     try {
       await setDoc(doc(db, 'users', currentUser.uid), {
@@ -363,7 +380,7 @@
         },
         lifeList: state.lifeList
       }, {merge: true});
-    } catch(e) { console.error("Error guardando en nube:", e); }
+    } catch(e) { console.error("Error sincronizando en nube:", e); }
   }
 
   function parseCSV(text){
@@ -423,7 +440,7 @@
     document.getElementById('region').value = state.region || 'CL';
     document.getElementById('mode').value = state.mode || 'notable';
     document.getElementById('includeProvisional').checked = !!state.includeProvisional;
-    document.getElementById('nameLocale').value = state.nameLocale || 'es-CL';
+    document.getElementById('nameLocale').value = state.nameLocale || 'es_CL';
     document.getElementById('backDays').value = state.backDays || 2;
     document.getElementById('friendPhone').value = state.friendPhone || '';
     document.getElementById('hideSeenToggle').checked = !!state.hideSeen;
@@ -454,7 +471,7 @@
     map = L.map('map', {zoomControl:false}).setView([-33.45,-70.66], 5);
     L.control.zoom({position: 'bottomright'}).addTo(map);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 18, attribution: '&copy; OSM'
+      maxZoom: 18, attribution: '&copy; OpenStreetMap'
     }).addTo(map);
     markerLayer = L.layerGroup().addTo(map);
   }
@@ -462,8 +479,8 @@
   function buildUrl(){
     let base = 'https://api.ebird.org/v2/data/obs/' + encodeURIComponent(state.region) + '/recent';
     if(state.mode === 'notable') base += '/notable';
-    const nameLocale = (state.nameLocale === 'sci') ? 'es-CL' : state.nameLocale;
-    const params = ['back='+state.backDays, 'sppLocale='+nameLocale, 'detail=full', 'key='+encodeURIComponent(state.apiKey)];
+    const nameLocale = (state.nameLocale === 'sci') ? 'es_CL' : state.nameLocale;
+    const params = ['back='+state.backDays, 'locale='+nameLocale, 'detail=full', 'key='+encodeURIComponent(state.apiKey)];
     if(state.mode === 'all') params.push('maxResults=300');
     if(state.includeProvisional) params.push('includeProvisional=true');
     return base + '?' + params.join('&');
@@ -490,7 +507,7 @@
     data.forEach(obs => {
       obs._isNew = !seenSet[obs.subId];
       obs._inLifeList = isInLifeList(obs);
-      obs._unconfirmed = (obs.obsValid === false);
+      obs._unconfirmed = (obs.obsValid === false) || (obs.obsReviewed === false);
       
       obs._imageUrl = '';
       if(obs.media && obs.media.length > 0){
@@ -537,7 +554,7 @@
     const bounds = [];
     data.forEach(obs => {
       if(typeof obs.lat !== 'number' || typeof obs.lng !== 'number') return;
-      const color = obs._unconfirmed ? '#f59e0b' : (obs._inLifeList===false && state.lifeList.length ? '#f43f5e' : '#0ea5e9');
+      const color = obs._unconfirmed ? '#B8860B' : (obs._inLifeList===false && state.lifeList.length ? '#C94A3D' : '#1F6F64');
       const marker = L.circleMarker([obs.lat,obs.lng], { radius: 6, color: color, fillColor: color, fillOpacity: 0.9, weight: 1 });
       marker.bindPopup(popupHtml(obs));
       marker.addTo(markerLayer);
@@ -549,10 +566,10 @@
   function popupHtml(obs){
     const observer = escapeHtml(obs.userDisplayName || (obs.firstName ? obs.firstName + ' ' + obs.lastName : 'Ebirder'));
     const thumbHtml = obs._imageUrl ? '<div style="margin-bottom:6px;text-align:center;"><img src="'+obs._imageUrl+'" style="max-height:100px;max-width:100%;border-radius:4px;object-fit:cover;"></div>' : '';
-    return '<div style="font-size:13px;color:#111;">'+thumbHtml+'<b>'+escapeHtml(primaryName(obs))+'</b><br>'+
-      '<span style="font-style:italic;color:#555;">'+escapeHtml(secondaryLine(obs))+'</span><br>'+
+    return '<div style="font-size:13px;color:#16231F;">'+thumbHtml+'<b>'+escapeHtml(primaryName(obs))+'</b><br>'+
+      '<span style="font-style:italic;color:#5B6A5D;">'+escapeHtml(secondaryLine(obs))+'</span><br>'+
       '📍 '+escapeHtml(obs.locName)+'<br>👤 '+observer+'</div>'+
-      '<a href="'+whatsappLink(obs)+'" target="_blank" rel="noopener" style="display:block;margin-top:6px;background:#065f46;color:#6ee7b7;text-align:center;padding:4px;border-radius:3px;text-decoration:none;font-weight:700;font-size:11px;">WhatsApp</a>';
+      '<a href="'+whatsappLink(obs)+'" target="_blank" rel="noopener" style="display:block;margin-top:6px;background:#1F6F64;color:#fff;text-align:center;padding:4px;border-radius:3px;text-decoration:none;font-weight:700;font-size:11px;">WhatsApp</a>';
   }
 
   function renderFeed(data){
@@ -565,7 +582,7 @@
     const classes = 'card' + (state.mode==='notable' ? ' notable' : '') + (obs._unconfirmed ? ' unconfirmed' : '');
     const newBadge = obs._isNew ? '<span class="badge new">Nuevo</span>' : '';
     const lifeBadge = (state.lifeList.length && !obs._inLifeList) ? '<span class="badge new">¡Falta!</span>' : '';
-    const unconfirmedBadge = obs._unconfirmed ? '<span class="badge" style="background:#451a03;color:#f59e0b;">Revisión</span>' : '';
+    const unconfirmedBadge = obs._unconfirmed ? '<span class="badge unconfirmed">Revisión</span>' : '';
     const observer = escapeHtml(obs.userDisplayName || (obs.firstName ? obs.firstName + ' ' + obs.lastName : 'Ebirder'));
     const commentText = obs.comments || obs.subIDComments || '';
     const commentsHtml = commentText ? '<div class="card-comment">💬 "'+escapeHtml(commentText)+'"</div>' : '';
