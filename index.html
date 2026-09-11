@@ -5,10 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bitácora eBird · Rápida</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<!-- SDKs de Firebase -->
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 <style>
   :root{
     --bg:#121816;
@@ -26,7 +22,6 @@
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;}
   
-  /* Pantalla de Login ultrarrápida */
   #authScreen{
     position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg);
     display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;
@@ -50,7 +45,6 @@
   .auth-switch{text-align:center;font-size:12px;color:var(--muted);margin-top:14px;cursor:pointer;}
   .auth-switch:hover{color:var(--accent);text-decoration:underline;}
 
-  /* App Principal Compacta */
   #appContainer{display:none;flex-direction:column;min-height:100vh;}
 
   header.masthead{
@@ -68,7 +62,6 @@
   button.btn-sm:hover{background:var(--panel-hover);border-color:var(--accent);}
   button.btn-danger{background:#3A1D23;color:var(--danger);border-color:#592530;}
 
-  /* Barra de Control Rápido Horizontal */
   .quick-bar{
     background:#161D1B;padding:12px 20px;border-bottom:1px solid var(--border);
     display:flex;flex-wrap:wrap;gap:12px;align-items:center;
@@ -85,7 +78,6 @@
   .checkbox-group input{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;}
   .checkbox-group label{font-size:12px;color:var(--text);cursor:pointer;}
 
-  /* Layout Principal (Mapa + Feed) */
   .workspace{display:flex;flex:1;min-height:calc(100vh - 120px);}
   aside.sidebar{
     width:380px;flex:none;background:var(--panel);border-right:1px solid var(--border);
@@ -106,7 +98,6 @@
   #map-container{flex:1;position:relative;background:#0A0E0C;}
   #map{width:100%;height:100%;min-height:400px;}
 
-  /* Tarjetas de Avistamiento Optimizadas */
   .card{
     background:#161D1B;border:1px solid var(--border);border-left:3px solid var(--accent);
     border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:8px;
@@ -118,7 +109,6 @@
   
   .card-top{display:flex;gap:10px;align-items:flex-start;}
   .card-thumb{width:50px;height:50px;border-radius:4px;background:#111614;flex:none;overflow:hidden;border:1px solid var(--border);}
-  .card-thumb img{width:100%;height:100%;object-fit:cover;}
   .card-thumb.empty::after{content:'\1F426';display:flex;align-items:center;justify-content:center;height:100%;font-size:20px;opacity:0.3;}
   
   .card-info{flex:1;min-width:0;}
@@ -127,7 +117,6 @@
   
   .badge{display:inline-block;font-size:10px;padding:1px 5px;border-radius:3px;font-weight:700;margin-left:4px;vertical-align:middle;}
   .badge.new{background:var(--danger);color:#fff;}
-  .badge.seen{background:#24302C;color:var(--muted);}
   
   .card-meta{font-size:11.5px;color:var(--muted);line-height:1.4;}
   .card-comment{font-size:11.5px;background:#111614;padding:6px 8px;border-radius:4px;border-left:2px solid var(--border);color:#C2CDC7;margin-top:4px;}
@@ -152,7 +141,6 @@
 </head>
 <body>
 
-<!-- Login Rápido -->
 <div id="authScreen">
   <div class="auth-card">
     <h2 id="authTitle">Acceso Bitácora</h2>
@@ -166,7 +154,6 @@
   </div>
 </div>
 
-<!-- Aplicación Principal -->
 <div id="appContainer">
   <header class="masthead">
     <div>
@@ -183,7 +170,6 @@
     </div>
   </header>
 
-  <!-- Barra de Configuración Horizontal Rápida -->
   <div class="quick-bar">
     <div class="control-group" style="max-width:180px;">
       <label>Zona</label>
@@ -255,7 +241,6 @@
     <button class="btn-sm" id="btnSave" style="background:var(--accent);color:#111;font-weight:700;padding:8px 16px;margin-top:auto;">Aplicar</button>
   </div>
 
-  <!-- Workspace con Sidebar Feed y Mapa -->
   <div class="workspace">
     <aside class="sidebar">
       <div class="sidebar-header">
@@ -275,65 +260,67 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script>
-(function(){
-  'use strict';
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
-  var firebaseConfig = {
-    apiKey: "AIzaSyBRs59_2hhEyyFGuZ6jn2XgQS1Ve74Awrg",
+  const firebaseConfig = {
+    apiKey: "AIzaSyBRs59_2hhEyyFGuZ6jn2XgQS1Ve74AWrg",
     authDomain: "ebird-c1352.firebaseapp.com",
     projectId: "ebird-c1352",
-    storageBucket: "ebird-c1352.appspot.com",
+    storageBucket: "ebird-c1352.firebasestorage.app",
     messagingSenderId: "119395490083",
-    appId: "1:119395490083:web:3ecf01bef253ed56cf5496"
+    appId: "1:119395490083:web:3ecf01bef253ed56cf5496",
+    measurementId: "G-ECNHD7DLH4"
   };
 
-  firebase.initializeApp(firebaseConfig);
-  var auth = firebase.auth();
-  var db = firebase.firestore();
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
 
-  var EMBEDDED_API_KEY = '89f4bf7f-47ac-4e68-949f-de69c890bce7';
-  var currentUser = null;
+  const EMBEDDED_API_KEY = '89f4bf7f-47ac-4e68-949f-de69c890bce7';
+  let currentUser = null;
   
-  var cachedState = localStorage.getItem('ebird_fast_state');
-  var state = cachedState ? JSON.parse(cachedState) : {
+  let cachedState = localStorage.getItem('ebird_fast_state');
+  let state = cachedState ? JSON.parse(cachedState) : {
     apiKey: EMBEDDED_API_KEY, region:'CL', mode:'notable', backDays:2, interval:10,
     friendPhone:'', lifeList:[], hideSeen:false, nameLocale:'es-CL', includeProvisional:false, seenSubIds:[]
   };
 
-  var map, markerLayer;
-  var pollTimer = null, countdownTimer = null, nextRunAt = null;
-  var lastObservations = [];
+  let map, markerLayer;
+  let pollTimer = null, countdownTimer = null, nextRunAt = null;
+  let lastObservations = [];
 
-  var isRegistering = false;
-  document.getElementById('authSwitchMode').addEventListener('click', function(){
+  let isRegistering = false;
+  document.getElementById('authSwitchMode').addEventListener('click', () => {
     isRegistering = !isRegistering;
     document.getElementById('authTitle').textContent = isRegistering ? 'Crear Cuenta' : 'Acceso Bitácora';
     document.getElementById('authBtn').textContent = isRegistering ? 'Registrarse' : 'Ingresar';
     document.getElementById('authSwitchMode').textContent = isRegistering ? '¿Ya tienes cuenta? Ingresa' : '¿No tienes cuenta? Regístrate';
   });
 
-  document.getElementById('authBtn').addEventListener('click', function(){
-    var email = document.getElementById('authEmail').value.trim();
-    var pass = document.getElementById('authPassword').value.trim();
-    var errBox = document.getElementById('authError');
+  document.getElementById('authBtn').addEventListener('click', () => {
+    const email = document.getElementById('authEmail').value.trim();
+    const pass = document.getElementById('authPassword').value.trim();
+    const errBox = document.getElementById('authError');
     errBox.textContent = '';
     if(!email || !pass){ errBox.textContent = 'Completa los campos.'; return; }
     if(isRegistering){
-      auth.createUserWithEmailAndPassword(email, pass).catch(function(e){ errBox.textContent = e.message; });
+      createUserWithEmailAndPassword(auth, email, pass).catch(e => { errBox.textContent = e.message; });
     } else {
-      auth.signInWithEmailAndPassword(email, pass).catch(function(e){ errBox.textContent = e.message; });
+      signInWithEmailAndPassword(auth, email, pass).catch(e => { errBox.textContent = e.message; });
     }
   });
 
-  document.getElementById('btnLogout').addEventListener('click', function(){
-    auth.signOut().then(function(){
+  document.getElementById('btnLogout').addEventListener('click', () => {
+    signOut(auth).then(() => {
       localStorage.removeItem('ebird_fast_state');
       location.reload();
     });
   });
 
-  auth.onAuthStateChanged(function(user){
+  onAuthStateChanged(auth, user => {
     if(user){
       currentUser = user;
       document.getElementById('authScreen').style.display = 'none';
@@ -343,11 +330,11 @@
       fillForm();
       renderLifeStatus();
       initMap();
-      fetchObservations(false);
+      fetchObservations();
 
-      db.collection('users').doc(currentUser.uid).get().then(function(doc){
-        if(doc.exists){
-          var data = doc.data();
+      getDoc(doc(db, 'users', currentUser.uid)).then(docSnap => {
+        if(docSnap.exists()){
+          const data = docSnap.data();
           if(data.preferences) Object.assign(state, data.preferences);
           if(data.lifeList) state.lifeList = data.lifeList;
           localStorage.setItem('ebird_fast_state', JSON.stringify(state));
@@ -355,7 +342,7 @@
           renderLifeStatus();
           renderCurrentData();
         }
-      }).catch(function(){});
+      }).catch(() => {});
     } else {
       currentUser = null;
       document.getElementById('authScreen').style.display = 'flex';
@@ -363,43 +350,43 @@
     }
   });
 
-  function saveUserDataToCloud(){
+  async function saveUserDataToCloud(){
     localStorage.setItem('ebird_fast_state', JSON.stringify(state));
     if(!currentUser) return;
-    db.collection('users').doc(currentUser.uid).set({
-      preferences: {
-        region: state.region, mode: state.mode, backDays: state.backDays,
-        interval: state.interval, friendPhone: state.friendPhone,
-        hideSeen: state.hideSeen, nameLocale: state.nameLocale, includeProvisional: state.includeProvisional
-      },
-      lifeList: state.lifeList
-    }, {merge: true});
+    try {
+      await setDoc(doc(db, 'users', currentUser.uid), {
+        preferences: {
+          region: state.region, mode: state.mode, backDays: state.backDays,
+          interval: state.interval, friendPhone: state.friendPhone,
+          hideSeen: state.hideSeen, nameLocale: state.nameLocale, includeProvisional: state.includeProvisional
+        },
+        lifeList: state.lifeList
+      }, {merge: true});
+    } catch(e) { console.error(e); }
   }
 
   function parseCSV(text){
-    var lines = text.split(/\r\n|\n|\r/).filter(function(l){return l.trim().length;});
+    const lines = text.split(/\r\n|\n|\r/).filter(l => l.trim().length);
     if(!lines.length) return [];
-    var headers = splitCSVLine(lines[0]).map(function(h){return h.trim().toLowerCase();});
-    var sciIdx = headers.findIndex(function(h){return h.indexOf('scientific')>-1;});
-    var comIdx = headers.findIndex(function(h){return h.indexOf('common name')>-1 || h==='species';});
-    var seen = {};
-    for(var i=1;i<lines.length;i++){
-      var cols = splitCSVLine(lines[i]);
-      var sci = sciIdx>-1 ? (cols[sciIdx]||'').trim().toLowerCase() : '';
-      var com = comIdx>-1 ? (cols[comIdx]||'').trim() : '';
-      var key = sci || normalizeText(com);
+    const headers = splitCSVLine(lines[0]).map(h => h.trim().toLowerCase());
+    const sciIdx = headers.findIndex(h => h.indexOf('scientific') > -1);
+    const comIdx = headers.findIndex(h => h.indexOf('common name') > -1 || h === 'species');
+    const seen = {};
+    for(let i=1; i<lines.length; i++){
+      const cols = splitCSVLine(lines[i]);
+      const sci = sciIdx > -1 ? (cols[sciIdx]||'').trim().toLowerCase() : '';
+      const com = comIdx > -1 ? (cols[comIdx]||'').trim() : '';
+      const key = sci || normalizeText(com);
       if(!key) continue;
       if(!seen[key]) seen[key] = {sci: sci, common: normalizeText(com)};
     }
-    var result = [];
-    for(var k in seen){ result.push(seen[k]); }
-    return result;
+    return Object.values(seen);
   }
 
   function splitCSVLine(line){
-    var out = [], cur = '', inQuotes = false;
-    for(var i=0;i<line.length;i++){
-      var ch = line[i];
+    const out = []; let cur = ''; let inQuotes = false;
+    for(let i=0; i<line.length; i++){
+      const ch = line[i];
       if(ch === '"'){ inQuotes = !inQuotes; continue; }
       if(ch === ',' && !inQuotes){ out.push(cur); cur=''; continue; }
       cur += ch;
@@ -412,22 +399,20 @@
   }
   function isInLifeList(obs){
     if(!state.lifeList.length) return false;
-    var sci = (obs.sciName||'').toLowerCase();
-    var com = normalizeText(obs.comName||'');
-    return state.lifeList.some(function(item){
-      return (item.sci && sci && item.sci === sci) || (item.common && com && item.common === com);
-    });
+    const sci = (obs.sciName||'').toLowerCase();
+    const com = normalizeText(obs.comName||'');
+    return state.lifeList.some(item => (item.sci && sci && item.sci === sci) || (item.common && com && item.common === com));
   }
 
-  document.getElementById('lifeListFile').addEventListener('change', function(e){
-    var file = e.target.files[0];
+  document.getElementById('lifeListFile').addEventListener('change', e => {
+    const file = e.target.files[0];
     if(!file) return;
-    var reader = new FileReader();
-    reader.onload = function(ev){
+    const reader = new FileReader();
+    reader.onload = ev => {
       state.lifeList = parseCSV(ev.target.result);
       saveUserDataToCloud();
       renderLifeStatus();
-      lastObservations.forEach(function(obs){ obs._inLifeList = isInLifeList(obs); });
+      lastObservations.forEach(obs => { obs._inLifeList = isInLifeList(obs); });
       renderCurrentData();
     };
     reader.readAsText(file);
@@ -455,7 +440,7 @@
   }
 
   function renderLifeStatus(){
-    var box = document.getElementById('lifeStatus');
+    const box = document.getElementById('lifeStatus');
     if(state.lifeList && state.lifeList.length){
       box.innerHTML = 'Lista Nube: <b>'+state.lifeList.length+' spp</b>';
     } else {
@@ -474,40 +459,40 @@
   }
 
   function buildUrl(){
-    var base = 'https://api.ebird.org/v2/data/obs/' + encodeURIComponent(state.region) + '/recent';
+    let base = 'https://api.ebird.org/v2/data/obs/' + encodeURIComponent(state.region) + '/recent';
     if(state.mode === 'notable') base += '/notable';
-    var nameLocale = (state.nameLocale === 'sci') ? 'es-CL' : state.nameLocale;
-    var params = ['back='+state.backDays, 'sppLocale='+nameLocale, 'detail=full', 'key='+encodeURIComponent(state.apiKey)];
+    const nameLocale = (state.nameLocale === 'sci') ? 'es-CL' : state.nameLocale;
+    const params = ['back='+state.backDays, 'sppLocale='+nameLocale, 'detail=full', 'key='+encodeURIComponent(state.apiKey)];
     if(state.mode === 'all') params.push('maxResults=300');
     if(state.includeProvisional) params.push('includeProvisional=true');
     return base + '?' + params.join('&');
   }
 
-  function fetchObservations(manual){
-    var directUrl = buildUrl();
+  function fetchObservations(){
+    const directUrl = buildUrl();
     document.getElementById('lastUpdate').textContent = 'Buscando...';
     fetch(directUrl)
-      .then(function(res){ if(!res.ok) throw new Error(); return res.json(); })
-      .then(function(data){ handleNewData(data); })
-      .catch(function(){
+      .then(res => { if(!res.ok) throw new Error(); return res.json(); })
+      .then(data => { handleNewData(data); })
+      .catch(() => {
         fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(directUrl))
-          .then(function(res){ return res.json(); })
-          .then(function(data){ handleNewData(data); })
-          .catch(function(){ document.getElementById('lastUpdate').textContent = 'Error red'; });
+          .then(res => res.json())
+          .then(data => { handleNewData(data); })
+          .catch(() => { document.getElementById('lastUpdate').textContent = 'Error red'; });
       })
-      .finally(function(){ scheduleNext(); });
+      .finally(() => { scheduleNext(); });
   }
 
   function handleNewData(data){
-    var seenSet = {};
-    state.seenSubIds.forEach(function(id){ seenSet[id]=true; });
-    data.forEach(function(obs){
+    const seenSet = {};
+    state.seenSubIds.forEach(id => { seenSet[id]=true; });
+    data.forEach(obs => {
       obs._isNew = !seenSet[obs.subId];
       obs._inLifeList = isInLifeList(obs);
       obs._unconfirmed = (obs.obsValid === false);
     });
-    data.sort(function(a,b){ return new Date(b.obsDt) - new Date(a.obsDt); });
-    data.forEach(function(obs){ seenSet[obs.subId]=true; });
+    data.sort((a,b) => new Date(b.obsDt) - new Date(a.obsDt));
+    data.forEach(obs => { seenSet[obs.subId]=true; });
     state.seenSubIds = Object.keys(seenSet);
 
     lastObservations = data;
@@ -518,21 +503,21 @@
   function scheduleNext(){
     clearTimeout(pollTimer);
     clearInterval(countdownTimer);
-    var ms = 10 * 60 * 1000;
+    const ms = 10 * 60 * 1000;
     nextRunAt = Date.now()+ms;
-    pollTimer = setTimeout(function(){ fetchObservations(false); }, ms);
+    pollTimer = setTimeout(() => { fetchObservations(); }, ms);
     countdownTimer = setInterval(updateCountdown, 1000);
   }
   function updateCountdown(){
-    var remaining = Math.max(0, Math.round((nextRunAt-Date.now())/1000));
-    var m = Math.floor(remaining/60), s = remaining%60;
+    const remaining = Math.max(0, Math.round((nextRunAt-Date.now())/1000));
+    const m = Math.floor(remaining/60), s = remaining%60;
     document.getElementById('nextUpdate').textContent = 'Prox: ' + m + ':' + (s<10?'0':'')+s;
   }
 
   function renderCurrentData(){
-    var dataToRender = lastObservations;
+    let dataToRender = lastObservations;
     if(state.hideSeen && state.lifeList.length > 0){
-      dataToRender = lastObservations.filter(function(obs){ return !obs._inLifeList; });
+      dataToRender = lastObservations.filter(obs => !obs._inLifeList);
     }
     renderMapMarkers(dataToRender);
     renderFeed(dataToRender);
@@ -542,11 +527,11 @@
     if(!markerLayer) return;
     markerLayer.clearLayers();
     if(!data.length) return;
-    var bounds = [];
-    data.forEach(function(obs){
+    const bounds = [];
+    data.forEach(obs => {
       if(typeof obs.lat !== 'number' || typeof obs.lng !== 'number') return;
-      var color = obs._unconfirmed ? '#F59E0B' : (obs._inLifeList===false && state.lifeList.length ? '#F43F5E' : '#2DD4BF');
-      var marker = L.circleMarker([obs.lat,obs.lng], { radius: 6, color: color, fillColor: color, fillOpacity: 0.9, weight: 1 });
+      const color = obs._unconfirmed ? '#F59E0B' : (obs._inLifeList===false && state.lifeList.length ? '#F43F5E' : '#2DD4BF');
+      const marker = L.circleMarker([obs.lat,obs.lng], { radius: 6, color: color, fillColor: color, fillOpacity: 0.9, weight: 1 });
       marker.bindPopup(popupHtml(obs));
       marker.addTo(markerLayer);
       bounds.push([obs.lat,obs.lng]);
@@ -555,7 +540,7 @@
   }
 
   function popupHtml(obs){
-    var observer = escapeHtml(obs.userDisplayName || (obs.firstName ? obs.firstName + ' ' + obs.lastName : 'Ebirder'));
+    const observer = escapeHtml(obs.userDisplayName || (obs.firstName ? obs.firstName + ' ' + obs.lastName : 'Ebirder'));
     return '<div style="font-size:13px;color:#111;"><b>'+escapeHtml(primaryName(obs))+'</b><br>'+
       '<span style="font-style:italic;color:#555;">'+escapeHtml(secondaryLine(obs))+'</span><br>'+
       '📍 '+escapeHtml(obs.locName)+'<br>👤 '+observer+'</div>'+
@@ -563,19 +548,19 @@
   }
 
   function renderFeed(data){
-    var feed = document.getElementById('feed');
+    const feed = document.getElementById('feed');
     if(!data.length){ feed.innerHTML = '<div class="empty-state">No hay registros con estos filtros.</div>'; return; }
     feed.innerHTML = data.map(cardHtml).join('');
   }
 
   function cardHtml(obs){
-    var classes = 'card' + (state.mode==='notable' ? ' notable' : '') + (obs._unconfirmed ? ' unconfirmed' : '');
-    var newBadge = obs._isNew ? '<span class="badge new">Nuevo</span>' : '';
-    var lifeBadge = (state.lifeList.length && !obs._inLifeList) ? '<span class="badge new">¡Falta!</span>' : '';
-    var unconfirmedBadge = obs._unconfirmed ? '<span class="badge" style="background:#451A03;color:#F59E0B;">Revisión</span>' : '';
-    var observer = escapeHtml(obs.userDisplayName || (obs.firstName ? obs.firstName + ' ' + obs.lastName : 'Ebirder'));
-    var commentText = obs.comments || obs.subIDComments || '';
-    var commentsHtml = commentText ? '<div class="card-comment">💬 "'+escapeHtml(commentText)+'"</div>' : '';
+    const classes = 'card' + (state.mode==='notable' ? ' notable' : '') + (obs._unconfirmed ? ' unconfirmed' : '');
+    const newBadge = obs._isNew ? '<span class="badge new">Nuevo</span>' : '';
+    const lifeBadge = (state.lifeList.length && !obs._inLifeList) ? '<span class="badge new">¡Falta!</span>' : '';
+    const unconfirmedBadge = obs._unconfirmed ? '<span class="badge" style="background:#451A03;color:#F59E0B;">Revisión</span>' : '';
+    const observer = escapeHtml(obs.userDisplayName || (obs.firstName ? obs.firstName + ' ' + obs.lastName : 'Ebirder'));
+    const commentText = obs.comments || obs.subIDComments || '';
+    const commentsHtml = commentText ? '<div class="card-comment">💬 "'+escapeHtml(commentText)+'"</div>' : '';
 
     return '<div class="'+classes+'">'+
       '<div class="card-top">'+
@@ -596,10 +581,10 @@
   }
 
   function whatsappLink(obs){
-    var nameLine = (state.nameLocale === 'sci') ? primaryName(obs) : (primaryName(obs)+' ('+obs.sciName+')');
-    var observer = obs.userDisplayName || (obs.firstName ? obs.firstName + ' ' + obs.lastName : 'Ebirder');
-    var commentText = obs.comments || obs.subIDComments || '';
-    var msg = '🐦 '+nameLine+'\n'+
+    const nameLine = (state.nameLocale === 'sci') ? primaryName(obs) : (primaryName(obs)+' ('+obs.sciName+')');
+    const observer = obs.userDisplayName || (obs.firstName ? obs.firstName + ' ' + obs.lastName : 'Ebirder');
+    const commentText = obs.comments || obs.subIDComments || '';
+    const msg = '🐦 '+nameLine+'\n'+
       (obs._unconfirmed ? '⚠️ Rareza en revisión\n' : '')+
       '📍 '+obs.locName+'\n'+
       '🕒 '+formatDate(obs.obsDt)+
@@ -612,25 +597,22 @@
   }
 
   function formatDate(d){
-    var dt = new Date(d.replace(' ','T'));
+    const dt = new Date(d.replace(' ','T'));
     if(isNaN(dt.getTime())) return d;
     return dt.toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'});
   }
 
   function primaryName(obs){ return state.nameLocale === 'sci' ? obs.sciName : obs.comName; }
   function secondaryLine(obs){ return state.nameLocale === 'sci' ? obs.comName : obs.sciName; }
-  function escapeHtml(s){ return (s==null?'':String(s)).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function escapeHtml(s){ return (s==null?'':String(s)).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-  var activeTab = 'feed';
-  document.getElementById('tabFeed').addEventListener('click', function(){
-    activeTab = 'feed';
+  document.getElementById('tabFeed').addEventListener('click', () => {
     document.getElementById('tabFeed').classList.add('active');
     document.getElementById('tabMapToggle').classList.remove('active');
     document.querySelector('.sidebar').style.display = 'flex';
     document.getElementById('map-container').style.display = 'none';
   });
-  document.getElementById('tabMapToggle').addEventListener('click', function(){
-    activeTab = 'map';
+  document.getElementById('tabMapToggle').addEventListener('click', () => {
     document.getElementById('tabMapToggle').classList.add('active');
     document.getElementById('tabFeed').classList.remove('active');
     if(window.innerWidth <= 850){
@@ -640,17 +622,15 @@
     if(map) map.invalidateSize();
   });
 
-  document.getElementById('btnRefresh').addEventListener('click', function(){ fetchObservations(true); });
-  document.getElementById('btnSave').addEventListener('click', function(){
+  document.getElementById('btnRefresh').addEventListener('click', () => { fetchObservations(); });
+  document.getElementById('btnSave').addEventListener('click', () => {
     readForm();
-    fetchObservations(true);
+    fetchObservations();
   });
 
   if(window.innerWidth <= 850){
     document.getElementById('map-container').style.display = 'none';
   }
-
-})();
 </script>
 </body>
 </html>
