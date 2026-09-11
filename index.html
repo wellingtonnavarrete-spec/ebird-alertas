@@ -247,21 +247,22 @@
 
   /* Layout Principal */
   .workspace{
-    display:flex;
+    display:grid;
+    grid-template-columns:minmax(390px, 430px) minmax(0,1fr);
     flex:1;
     min-height:calc(100vh - 120px);
+    background:var(--paper);
   }
 
   aside.sidebar{
-    width:340px;
-    flex:none;
+    width:auto;
     background:var(--paper-2);
     border-right:1px solid var(--line);
     display:flex;
     flex-direction:column;
     height:calc(100vh - 120px);
-    position:sticky;
-    top:0;
+    position:relative;
+    z-index:5;
   }
 
   .sidebar-header{
@@ -270,22 +271,21 @@
     display:flex;
     justify-content:space-between;
     align-items:center;
+    gap:12px;
+    background:rgba(244,245,239,.96);
   }
 
-  .view-tabs{
-    display:flex;
-    gap:4px;
-  }
+  .view-tabs{display:flex;gap:4px;}
 
   .view-tabs button{
     background:#fff;
     border:1px solid var(--line);
     color:var(--muted);
-    padding:5px 12px;
-    border-radius:3px;
+    padding:6px 13px;
+    border-radius:5px;
     cursor:pointer;
     font-size:12px;
-    font-weight:600;
+    font-weight:700;
   }
 
   .view-tabs button.active{
@@ -297,64 +297,51 @@
   .feed-list{
     flex:1;
     overflow-y:auto;
-    padding:12px;
+    padding:14px;
     display:flex;
     flex-direction:column;
-    gap:10px;
+    gap:12px;
   }
 
   #map-container{
     flex:1;
     position:relative;
-    background:#E9ECE4;
+    background:#dbe6e2;
+    min-width:0;
   }
 
-  #map{
-    width:100%;
-    height:100%;
-    min-height:400px;
-  }
+  #map{width:100%;height:100%;min-height:400px;}
 
   /* Tarjetas de Avistamiento */
   .card{
-    background:var(--paper-2);
+    background:#fff;
     border:1px solid var(--line);
-    border-left:4px solid var(--moss);
-    border-radius:3px;
-    padding:12px;
-    display:flex;
-    flex-direction:column;
-    gap:8px;
-    transition:border-color 0.2s;
+    border-left:5px solid var(--moss);
+    border-radius:10px;
+    padding:0;
+    overflow:hidden;
+    box-shadow:0 3px 12px rgba(22,35,31,.07);
+    transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;
   }
 
   .card:hover{
+    transform:translateY(-2px);
+    box-shadow:0 7px 20px rgba(22,35,31,.12);
     border-color:var(--teal);
   }
 
-  .card.notable{
-    border-left-color:var(--flame);
-  }
+  .card.notable{border-left-color:var(--flame);}
+  .card.unconfirmed{border-left-color:var(--amber);}
 
-  .card.unconfirmed{
-    border-left-color:var(--amber);
-  }
+  .card-top{display:block;}
 
-  .card-top{
-    display:flex;
-    gap:10px;
-    align-items:flex-start;
-  }
-
-  /* FOTO DEL AVE */
   .card-thumb{
-    width:90px;
-    height:70px;
-    border-radius:5px;
-    background:#fff;
-    flex:none;
+    width:100%;
+    height:175px;
+    border:0;
+    border-radius:0;
+    background:linear-gradient(135deg,#dfe8e3,#f4f5ef);
     overflow:hidden;
-    border:1px solid var(--line);
     position:relative;
   }
 
@@ -371,111 +358,96 @@
     align-items:center;
     justify-content:center;
     height:100%;
-    font-size:25px;
-    opacity:0.3;
+    font-size:54px;
+    opacity:.28;
   }
+
+  .card-info{padding:12px 14px 4px;min-width:0;}
 
   .photo-source{
-    font-size:8px;
-    color:var(--muted);
-    margin-top:2px;
+    font-size:9px;
+    color:rgba(255,255,255,.85);
+    position:absolute;
+    right:8px;
+    bottom:7px;
+    margin:0;
+    padding:3px 6px;
+    border-radius:10px;
+    background:rgba(22,35,31,.62);
+    line-height:1;
     text-align:center;
-    line-height:1.1;
-  }
-
-  .card-info{
-    flex:1;
-    min-width:0;
   }
 
   .card-title{
-    font-size:14px;
+    font-size:20px;
     font-weight:700;
     margin:0 0 2px 0;
     font-family:var(--serif);
     color:var(--ink);
+    line-height:1.15;
   }
 
   .card-sci{
-    font-size:11.5px;
+    font-size:12px;
     color:var(--muted);
     font-style:italic;
-    margin:0;
+    margin:0 0 8px;
   }
 
   .badge{
     display:inline-block;
-    font-size:10px;
-    padding:2px 6px;
+    font-size:9px;
+    padding:3px 7px;
     border-radius:10px;
     font-weight:700;
-    margin-left:4px;
+    margin-left:5px;
     vertical-align:middle;
+    font-family:var(--sans);
   }
 
-  .badge.new{
-    background:var(--flame);
-    color:#fff;
-  }
-
-  .badge.notable{
-    background:var(--moss);
-    color:#fff;
-  }
-
-  .badge.unconfirmed{
-    background:var(--amber);
-    color:#fff;
-  }
+  .badge.new{background:var(--flame);color:#fff;}
+  .badge.notable{background:var(--moss);color:#fff;}
+  .badge.unconfirmed{background:var(--amber);color:#fff;}
 
   .card-meta{
-    font-size:11.5px;
+    font-size:12px;
     color:var(--muted);
-    line-height:1.4;
+    line-height:1.5;
   }
 
   .card-comment{
     font-size:11.5px;
-    background:#fff;
-    padding:6px 8px;
-    border-radius:3px;
+    background:var(--paper-2);
+    padding:7px 10px;
+    border-radius:6px;
     border-left:2px solid var(--line);
     color:var(--ink);
-    margin-top:4px;
+    margin:7px 14px 0;
   }
 
   .card-actions{
-    display:flex;
-    gap:6px;
-    margin-top:2px;
+    display:grid;
+    grid-template-columns:1.1fr 1fr 1fr;
+    gap:7px;
+    padding:11px 14px 14px;
+    margin:0;
   }
 
   .card-actions a{
-    flex:1;
     text-align:center;
-    background:#fff;
+    background:var(--paper-2);
     color:var(--ink);
     text-decoration:none;
-    padding:5px;
-    border-radius:3px;
+    padding:7px 5px;
+    border-radius:6px;
     font-size:11.5px;
-    font-weight:600;
+    font-weight:700;
     border:1px solid var(--line);
   }
 
-  .card-actions a.wa{
-    background:var(--teal);
-    color:#fff;
-    border-color:var(--teal);
-  }
-
-  .card-actions a.wa:hover{
-    background:var(--teal-dark);
-  }
-
-  .card-actions a:hover{
-    background:var(--paper);
-  }
+  .card-actions a.wa{background:var(--teal);color:#fff;border-color:var(--teal);}
+  .card-actions a.wa:hover{background:var(--teal-dark);}
+  .card-actions a:hover{background:#fff;border-color:var(--teal);}
 
   .status-text{
     font-size:11.5px;
@@ -493,24 +465,12 @@
   }
 
   @media (max-width:850px){
-    .workspace{
-      flex-direction:column;
-    }
-
-    aside.sidebar{
-      width:100%;
-      height:50vh;
-      position:relative;
-    }
-
-    #map-container{
-      height:50vh;
-    }
-
-    .card-thumb{
-      width:80px;
-      height:65px;
-    }
+    .workspace{display:flex;flex-direction:column;}
+    aside.sidebar{width:100%;height:58vh;position:relative;}
+    #map-container{height:42vh;min-height:320px;}
+    .card-thumb{height:155px;}
+    header.masthead{padding:12px 16px;}
+    .quick-bar{padding:10px 16px;}
   }
 </style>
 </head>
@@ -544,7 +504,7 @@
 
   <header class="masthead">
     <div>
-      <h1>Bitácora eBird · Chile</h1>
+      <h1>🐦 Bitácora eBird · Chile</h1>
 
       <div class="user-info">
         Conectado como:
@@ -626,7 +586,7 @@
       <label>Nombre mostrado</label>
 
       <select id="nameLocale">
-        <option value="es_CL">Español (Chile)</option>
+        <option value="es">Español (Chile)</option>
         <option value="es">Español</option>
         <option value="en">Inglés</option>
         <option value="sci">Científico</option>
@@ -796,7 +756,7 @@
         friendPhone:'',
         lifeList:[],
         hideSeen:false,
-        nameLocale:'es-CL',
+        nameLocale:'es',
         includeProvisional:false,
         seenSubIds:[],
         imageCache:{}
@@ -804,6 +764,7 @@
 
 
   /* Compatibilidad con estados anteriores */
+  if(state.nameLocale === 'es-CL' || state.nameLocale === 'es_CL') state.nameLocale = 'es';
   if(!state.imageCache){
     state.imageCache = {};
   }
@@ -1411,7 +1372,7 @@
     document.getElementById(
       'nameLocale'
     ).value =
-      state.nameLocale || 'es-CL';
+      state.nameLocale || 'es';
 
 
     document.getElementById(
@@ -1597,7 +1558,7 @@
 
     const params = [
       'back=' + state.backDays,
-      'sppLocale=' + nameLocale,
+      'sppLocale=es',
       'detail=full',
       'key=' +
         encodeURIComponent(
@@ -2882,11 +2843,67 @@
      NOMBRES
      ========================================================= */
 
+  /* =========================================================
+     NOMBRES COMUNES DE CHILE
+     Se prioriza el nombre usado en Chile cuando conocemos
+     el nombre científico. Para especies no incluidas, se usa
+     el nombre en español entregado por eBird.
+     ========================================================= */
+
+  const CHILE_BIRD_NAMES = {
+    'scelorchilus rubecula':'Chucao',
+    'asio flammeus':'Nuco',
+    'patagioenas araucana':'Torcaza',
+    'leistes loyca':'Loica',
+    'zonotrichia capensis':'Chincol',
+    'milvago chimango':'Tiuque',
+    'vanellus chilensis':'Queltehue',
+    'vultur gryphus':'Cóndor',
+    'campephilus magellanicus':'Carpintero negro',
+    'megaceryle torquata':'Martín pescador',
+    'columba livia':'Paloma doméstica',
+    'molothrus rufoaxillaris':'Tordo de ala rojiza',
+    'mimus triurus':'Calandria tres colas',
+    'sicalis luteola':'Chirihue',
+    'phrygilus gayi':'Cometocino de Gay',
+    'phrygilus patagonicus':'Cometocino patagónico',
+    'phrygilus fruticeti':'Cometocino de dorso castaño',
+    'diuca diuca':'Diuca',
+    'troglodytes aedon':'Chercán',
+    'turdus falcklandii':'Zorzal',
+    'elaenia albiceps':'Fiofío',
+    'anairetes parulus':'Cachudito',
+    'sephanoides sephaniodes':'Picaflor chico',
+    'lesbia sparganurus':'Picaflor gigante',
+    'geranoaetus polyosoma':'Aguilucho',
+    'caracara plancus':'Traro',
+    'falco sparverius':'Cernícalo',
+    'falco femoralis':'Halcón perdiguero',
+    'buteo ventralis':'Aguilucho de cola rojiza',
+    'athene cunicularia':'Pequén',
+    'glaucidium nana':'Chuncho',
+    'strix rufipes':'Concón',
+    'nycticorax nycticorax':'Huairavo',
+    'ardea cocoi':'Garza cuca',
+    'ardea alba':'Garza grande',
+    'egretta thula':'Garza chica',
+    'cathartes aura':'Jote de cabeza colorada',
+    'coragyps atratus':'Jote de cabeza negra',
+    'cureo':'Cureo'
+  };
+
+  function chileanCommonName(obs){
+    const key = normalizeText(obs.sciName || '');
+    if(key && CHILE_BIRD_NAMES[key]) return CHILE_BIRD_NAMES[key];
+    return obs.comName || 'Ave sin nombre';
+  }
+
   function primaryName(obs){
 
     return state.nameLocale === 'sci'
+
       ? obs.sciName
-      : obs.comName;
+      : chileanCommonName(obs);
 
   }
 
@@ -2894,7 +2911,7 @@
   function secondaryLine(obs){
 
     return state.nameLocale === 'sci'
-      ? obs.comName
+      ? chileanCommonName(obs)
       : obs.sciName;
 
   }
