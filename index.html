@@ -756,7 +756,7 @@
         friendPhone:'',
         lifeList:[],
         hideSeen:false,
-        nameLocale:'es',
+        nameLocale:'es_CL',
         includeProvisional:false,
         seenSubIds:[],
         imageCache:{}
@@ -764,7 +764,8 @@
 
 
   /* Compatibilidad con estados anteriores */
-  if(state.nameLocale === 'es-CL' || state.nameLocale === 'es_CL') state.nameLocale = 'es';
+  if(!state.nameLocale) state.nameLocale = 'es_CL';
+  if(state.nameLocale === 'es-CL') state.nameLocale = 'es_CL';
   if(!state.imageCache){
     state.imageCache = {};
   }
@@ -1372,7 +1373,7 @@
     document.getElementById(
       'nameLocale'
     ).value =
-      state.nameLocale || 'es';
+      state.nameLocale || 'es_CL';
 
 
     document.getElementById(
@@ -1550,15 +1551,23 @@
     }
 
 
+    /*
+     * IMPORTANTE:
+     * eBird mantiene un conjunto específico de nombres comunes para Chile.
+     * Usamos es_CL directamente para que comName llegue en español de Chile
+     * (Chucao, Nuco, Loica, etc.), en lugar de español genérico o inglés.
+     */
     const nameLocale =
       state.nameLocale === 'sci'
-        ? 'es-CL'
-        : state.nameLocale;
+        ? 'es_CL'
+        : (state.nameLocale === 'es' || state.nameLocale === 'es_CL' || state.nameLocale === 'es-CL'
+            ? state.nameLocale.replace('-', '_')
+            : state.nameLocale);
 
 
     const params = [
       'back=' + state.backDays,
-      'sppLocale=es',
+      'sppLocale=' + encodeURIComponent(nameLocale),
       'detail=full',
       'key=' +
         encodeURIComponent(
