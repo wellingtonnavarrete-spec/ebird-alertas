@@ -204,24 +204,17 @@
       <option value="CL-LL">Los Lagos</option>
       <option value="CL-AI">Aysén</option>
       <option value="CL-MA">Magallanes</option>
-      <option value="__custom">Otro (código personalizado)…</option>
     </select>
-    <div id="customRegionWrap" style="display:none;margin-top:8px;">
-      <label for="customRegion">Código de región eBird</label>
-      <input type="text" id="customRegion" placeholder="Ej: CL-RM-4104 (comuna de Santiago)">
-      <div class="hint">Busca el código exacto de una comuna en ebird.org/region.</div>
-    </div>
 
     <label for="mode">Qué avistamientos traer</label>
     <select id="mode">
       <option value="notable">Solo especies raras / notables</option>
       <option value="all">Todas las especies</option>
     </select>
-    <div class="hint" id="modeHint">Recomendado para "todo Chile": si eliges "todas las especies" a nivel país, la lista puede ser enorme — mejor usar un código de región más pequeño.</div>
 
     <div class="toggle-row">
       <input type="checkbox" id="includeProvisional">
-      <label for="includeProvisional" style="margin:0;">Incluir registros no confirmados / en revisión</label>
+      <label for="includeProvisional" style="margin:0;">Incluir registros de rarezas en revisión</label>
     </div>
     
     <div class="row2" style="margin-top:12px;">
@@ -255,32 +248,9 @@
       <div><label for="homeLng">Longitud</label><input type="text" id="homeLng" placeholder="-70.66"></div>
     </div>
 
-    <h2>Tu lista vitalicia</h2>
-    
-    <label for="lifeListRegion">Filtrar aves vistas por esta región:</label>
-    <select id="lifeListRegion">
-      <option value="ALL">Mundo (Cualquier lugar)</option>
-      <option value="CL">Todo Chile</option>
-      <option value="CL-AP">Arica y Parinacota</option>
-      <option value="CL-TA">Tarapacá</option>
-      <option value="CL-AN">Antofagasta</option>
-      <option value="CL-AT">Atacama</option>
-      <option value="CL-CO">Coquimbo</option>
-      <option value="CL-VS">Valparaíso</option>
-      <option value="CL-RM">Metropolitana de Santiago</option>
-      <option value="CL-LI">O'Higgins</option>
-      <option value="CL-ML">Maule</option>
-      <option value="CL-NB">Ñuble</option>
-      <option value="CL-BI">Biobío</option>
-      <option value="CL-AR">Araucanía</option>
-      <option value="CL-LR">Los Ríos</option>
-      <option value="CL-LL">Los Lagos</option>
-      <option value="CL-AI">Aysén</option>
-      <option value="CL-MA">Magallanes</option>
-    </select>
-
+    <h2>Tu lista vitalicia (Global)</h2>
     <input type="file" id="lifeListFile" accept=".csv" style="margin-top:10px;">
-    <div class="hint">Sube tu archivo CSV. La app leerá automáticamente la columna S/P para cruzar las regiones.</div>
+    <div class="hint">Sube tu archivo CSV "Life List". La app ocultará de la pantalla cualquier especie que ya tengas registrada en el mundo.</div>
     <div class="life-status" id="lifeStatus">Ninguna lista cargada todavía.</div>
     
     <div class="toggle-row">
@@ -313,7 +283,7 @@
     <div class="legend">
       <span><i style="background:#1F6F64;"></i>Confirmado</span>
       <span><i style="background:#C94A3D;"></i>Nuevo para ti</span>
-      <span><i style="background:#B8860B;"></i>No confirmado / en revisión</span>
+      <span><i style="background:#B8860B;"></i>Rareza en revisión</span>
     </div>
 
     <div id="map"></div>
@@ -335,7 +305,7 @@
   // ==========================================================
   var EMBEDDED_API_KEY = '89f4bf7f-47ac-4e68-949f-de69c890bce7';
 
-  var STORAGE_KEY = 'ebirdAlertasChile_v5'; // Actualizado para resetear con la nueva lógica
+  var STORAGE_KEY = 'ebirdAlertasChile_v6'; // Actualizado para resetear con la UI simplificada
   var state = loadState();
   var IMAGE_CACHE_KEY = 'ebirdAlertasChile_images_v1';
   var imageCache = loadImageCache();
@@ -374,8 +344,7 @@
       homeLat:'', homeLng:'', friendPhone:'', notifEnabled:false,
       lifeList:[], lifeListUploadedAt:null, seenSubIds:[],
       nameLocale:'es-CL', includeProvisional:false,
-      hideSeen:false,
-      lifeListRegion:'ALL'
+      hideSeen:false
     };
     if(!raw) return def;
     try{ return Object.assign(def, JSON.parse(raw)); }catch(e){ return def; }
@@ -389,15 +358,7 @@
 
   // ---------- form <-> state ----------
   function fillForm(){
-    var presetCodes = ['CL','CL-AP','CL-TA','CL-AN','CL-AT','CL-CO','CL-VS','CL-RM','CL-LI','CL-ML','CL-NB','CL-BI','CL-AR','CL-LR','CL-LL','CL-AI','CL-MA'];
-    if(presetCodes.indexOf(state.region) > -1){
-      document.getElementById('region').value = state.region;
-      document.getElementById('customRegionWrap').style.display = 'none';
-    } else {
-      document.getElementById('region').value = '__custom';
-      document.getElementById('customRegion').value = state.region;
-      document.getElementById('customRegionWrap').style.display = 'block';
-    }
+    document.getElementById('region').value = state.region || 'CL';
     document.getElementById('mode').value = state.mode;
     document.getElementById('includeProvisional').checked = !!state.includeProvisional;
     document.getElementById('nameLocale').value = state.nameLocale;
@@ -408,13 +369,10 @@
     document.getElementById('friendPhone').value = state.friendPhone;
     document.getElementById('notifToggle').checked = !!state.notifEnabled;
     document.getElementById('hideSeenToggle').checked = !!state.hideSeen;
-    document.getElementById('lifeListRegion').value = state.lifeListRegion || 'ALL';
     renderLifeStatus();
   }
   function readForm(){
-    var regionSel = document.getElementById('region').value;
-    state.region = regionSel === '__custom' ?
-      (document.getElementById('customRegion').value.trim() || 'CL') : regionSel;
+    state.region = document.getElementById('region').value;
     state.mode = document.getElementById('mode').value;
     state.includeProvisional = document.getElementById('includeProvisional').checked;
     state.nameLocale = document.getElementById('nameLocale').value;
@@ -425,7 +383,6 @@
     state.friendPhone = document.getElementById('friendPhone').value.trim().replace(/[^0-9]/g,'');
     state.notifEnabled = document.getElementById('notifToggle').checked;
     state.hideSeen = document.getElementById('hideSeenToggle').checked;
-    state.lifeListRegion = document.getElementById('lifeListRegion').value;
     saveState();
   }
 
@@ -439,7 +396,7 @@
     }
   }
 
-  // ---------- CSV parsing (Lector Regional Dinámico) ----------
+  // ---------- CSV parsing (Modo Global Simplificado) ----------
   function parseCSV(text){
     var lines = text.split(/\r\n|\n|\r/).filter(function(l){return l.trim().length;});
     if(!lines.length) return [];
@@ -447,10 +404,6 @@
     
     var sciIdx = headers.findIndex(function(h){return h.indexOf('scientific')>-1;});
     var comIdx = headers.findIndex(function(h){return h.indexOf('common name')>-1 || h==='species';});
-    
-    // Identificar las columnas de ubicación (incluyendo s/p)
-    var stateIdx = headers.findIndex(function(h){return h.indexOf('state/province')>-1 || h==='state' || h==='s/p';});
-    var countryIdx = headers.findIndex(function(h){return h.indexOf('country')>-1;});
 
     var seen = {};
     for(var i=1;i<lines.length;i++){
@@ -460,16 +413,9 @@
       var key = sci || normalizeText(com);
       if(!key) continue;
 
-      var st = stateIdx>-1 ? (cols[stateIdx]||'').trim().toUpperCase() : '';
-      var co = countryIdx>-1 ? (cols[countryIdx]||'').trim().toUpperCase() : '';
-
       if(!seen[key]){
-        seen[key] = {sci: sci, common: normalizeText(com), regions: {}};
+        seen[key] = {sci: sci, common: normalizeText(com)};
       }
-      
-      // Guardamos en qué regiones se ha visto esta especie
-      if(st) seen[key].regions[st] = true;
-      if(co) seen[key].regions[co] = true;
     }
     
     var result = [];
@@ -496,25 +442,9 @@
     if(!state.lifeList.length) return false;
     var sci = (obs.sciName||'').toLowerCase();
     var com = normalizeText(obs.comName||'');
-    var targetRegion = state.lifeListRegion || 'ALL';
 
     return state.lifeList.some(function(item){
-      var match = (item.sci && sci && item.sci === sci) || (item.common && com && item.common === com);
-      if(!match) return false;
-      
-      // Filtro Mundial
-      if(targetRegion === 'ALL') return true;
-      
-      // Filtro Nacional
-      if(targetRegion === 'CL') {
-        for(var reg in item.regions){
-          if(reg.indexOf('CL') === 0 || reg === 'CHILE') return true;
-        }
-        return false;
-      }
-      
-      // Filtro Regional Específico
-      return item.regions[targetRegion] === true;
+      return (item.sci && sci && item.sci === sci) || (item.common && com && item.common === com);
     });
   }
 
@@ -547,13 +477,6 @@
   document.getElementById('hideSeenToggle').addEventListener('change', function(e){
     state.hideSeen = e.target.checked;
     saveState();
-    renderCurrentData();
-  });
-
-  document.getElementById('lifeListRegion').addEventListener('change', function(e){
-    state.lifeListRegion = e.target.value;
-    saveState();
-    lastObservations.forEach(function(obs){ obs._inLifeList = isInLifeList(obs); });
     renderCurrentData();
   });
 
@@ -674,7 +597,13 @@
     data.forEach(function(obs){
       obs._isNew = !seenSet[obs.subId];
       obs._inLifeList = isInLifeList(obs);
-      obs._unconfirmed = (obs.obsValid === false) || (obs.obsReviewed === false);
+      
+      // EL FIX DE LA LOICA:
+      // Ahora solo se marca como "No confirmado" si el registro realmente falló la validación
+      // de eBird (es decir, hizo saltar el filtro porque es una rareza real o un conteo anormal).
+      // Los registros normales (que están esperando revisión pero no violan los filtros) 
+      // ya no aparecerán con la etiqueta naranja.
+      obs._unconfirmed = (obs.obsValid === false); 
     });
 
     var hasHome = state.homeLat && state.homeLng && !isNaN(parseFloat(state.homeLat)) && !isNaN(parseFloat(state.homeLng));
@@ -765,7 +694,7 @@
   function popupHtml(obs){
     var newBadge = obs._isNew ? ' <span class="badge new">Nuevo</span>' : '';
     var lifeBadge = (state.lifeList.length && !obs._inLifeList) ? ' <span class="badge notable">Nuevo para ti</span>' : '';
-    var unconfirmedBadge = obs._unconfirmed ? ' <span class="badge unconfirmed">No confirmado</span>' : '';
+    var unconfirmedBadge = obs._unconfirmed ? ' <span class="badge unconfirmed">Rareza en revisión</span>' : '';
     var photoId = 'popup-photo-' + safeId(obs.subId + obs.speciesCode);
     return '<div style="display:flex;gap:8px;">'+
       '<div id="'+photoId+'" style="width:56px;height:56px;flex:none;border-radius:4px;overflow:hidden;background:#E9ECE4;border:1px solid #C9CBB8;"></div>'+
@@ -792,7 +721,7 @@
     var classes = 'card' + (state.mode==='notable' ? ' notable' : '') + (obs._isNew ? ' is-new' : '') + (obs._unconfirmed ? ' unconfirmed' : '');
     var newBadge = obs._isNew ? '<span class="badge new">Nuevo</span>' : '';
     var lifeBadge = (state.lifeList.length && !obs._inLifeList) ? '<span class="badge notable">Nuevo para ti</span>' : '';
-    var unconfirmedBadge = obs._unconfirmed ? '<span class="badge unconfirmed">No confirmado</span>' : '';
+    var unconfirmedBadge = obs._unconfirmed ? '<span class="badge unconfirmed">Rareza en revisión</span>' : '';
     var distTxt = (typeof obs._dist === 'number') ? (' · ' + obs._dist.toFixed(1) + ' km de tu punto') : '';
     var mapUrl = 'https://www.google.com/maps?q='+obs.lat+','+obs.lng;
     var checklistUrl = 'https://ebird.org/checklist/'+obs.subId;
@@ -816,7 +745,7 @@
   function whatsappLink(obs){
     var nameLine = (state.nameLocale === 'sci') ? primaryName(obs) : (primaryName(obs)+' ('+obs.sciName+')');
     var msg = '🐦 '+nameLine+'\n'+
-      (obs._unconfirmed ? '⚠️ Registro aún no confirmado\n' : '')+
+      (obs._unconfirmed ? '⚠️ Rareza aún no confirmada\n' : '')+
       '📍 '+obs.locName+'\n'+
       '🕒 '+formatDate(obs.obsDt)+
       (obs.howMany ? '\n🔢 '+obs.howMany+' ejemplar(es)' : '')+
@@ -853,9 +782,6 @@
   }
   document.getElementById('tabMap').addEventListener('click', function(){ setView('map'); });
   document.getElementById('tabList').addEventListener('click', function(){ setView('list'); });
-  document.getElementById('region').addEventListener('change', function(e){
-    document.getElementById('customRegionWrap').style.display = e.target.value === '__custom' ? 'block' : 'none';
-  });
   document.getElementById('mode').addEventListener('change', function(e){
     var hint = document.getElementById('modeHint');
     hint.style.display = e.target.value === 'all' ? 'block' : 'none';
