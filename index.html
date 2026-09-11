@@ -488,7 +488,7 @@
   function buildUrl(){
     let base = 'https://api.ebird.org/v2/data/obs/' + encodeURIComponent(state.region) + '/recent';
     if(state.mode === 'notable') base += '/notable';
-    const nameLocale = (state.nameLocale === 'sci') ? 'es-CL' : state.nameLocale;
+    const nameLocale = state.nameLocale === 'sci' ? 'es-CL' : state.nameLocale;
     const params = ['back='+state.backDays, 'sppLocale='+nameLocale, 'detail=full', 'key='+encodeURIComponent(state.apiKey)];
     if(state.mode === 'all') params.push('maxResults=300');
     if(state.includeProvisional) params.push('includeProvisional=true');
