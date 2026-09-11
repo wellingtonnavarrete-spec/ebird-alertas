@@ -4,11 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bitácora eBird · Chile</title>
+
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+
 <!-- SDKs de Firebase -->
 <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore-compat.js"></script>
+
 <style>
   :root{
     --ink:#16231F;
@@ -24,172 +27,556 @@
     --serif: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
     --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
+
   *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;}
-  
+
+  html,body{
+    margin:0;
+    padding:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--sans);
+    font-size:14px;
+  }
+
   /* Pantalla de Login */
   #authScreen{
-    position:fixed;top:0;left:0;width:100%;height:100%;background:var(--paper);
-    display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:var(--paper);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:9999;
+    padding:20px;
   }
+
   .auth-card{
-    background:var(--paper-2);border:1px solid var(--line);padding:24px;border-radius:6px;
-    width:100%;max-width:380px;box-shadow:0 8px 24px rgba(22,35,31,0.15);
+    background:var(--paper-2);
+    border:1px solid var(--line);
+    padding:24px;
+    border-radius:6px;
+    width:100%;
+    max-width:380px;
+    box-shadow:0 8px 24px rgba(22,35,31,0.15);
   }
-  .auth-card h2{margin-top:0;font-size:20px;color:var(--teal-dark);font-family:var(--serif);}
-  .auth-card label{display:block;font-size:12px;color:var(--muted);margin:12px 0 4px 0;}
+
+  .auth-card h2{
+    margin-top:0;
+    font-size:20px;
+    color:var(--teal-dark);
+    font-family:var(--serif);
+  }
+
+  .auth-card label{
+    display:block;
+    font-size:12px;
+    color:var(--muted);
+    margin:12px 0 4px 0;
+  }
+
   .auth-card input{
-    width:100%;padding:8px 10px;background:#fff;border:1px solid var(--line);color:var(--ink);
-    border-radius:3px;font-size:14px;
+    width:100%;
+    padding:8px 10px;
+    background:#fff;
+    border:1px solid var(--line);
+    color:var(--ink);
+    border-radius:3px;
+    font-size:14px;
   }
-  .auth-card input:focus{outline:none;border-color:var(--teal);}
+
+  .auth-card input:focus{
+    outline:none;
+    border-color:var(--teal);
+  }
+
   .auth-card button{
-    width:100%;padding:10px;background:var(--teal);color:#fff;border:none;border-radius:3px;
-    font-weight:700;cursor:pointer;margin-top:14px;font-size:14px;
+    width:100%;
+    padding:10px;
+    background:var(--teal);
+    color:#fff;
+    border:none;
+    border-radius:3px;
+    font-weight:700;
+    cursor:pointer;
+    margin-top:14px;
+    font-size:14px;
   }
-  .auth-card button:hover{background:var(--teal-dark);}
-  .auth-switch{text-align:center;font-size:12px;color:var(--muted);margin-top:14px;cursor:pointer;}
-  .auth-switch:hover{color:var(--teal-dark);text-decoration:underline;}
+
+  .auth-card button:hover{
+    background:var(--teal-dark);
+  }
+
+  .auth-switch{
+    text-align:center;
+    font-size:12px;
+    color:var(--muted);
+    margin-top:14px;
+    cursor:pointer;
+  }
+
+  .auth-switch:hover{
+    color:var(--teal-dark);
+    text-decoration:underline;
+  }
 
   /* App Principal */
-  #appContainer{display:none;flex-direction:column;min-height:100vh;}
+  #appContainer{
+    display:none;
+    flex-direction:column;
+    min-height:100vh;
+  }
 
   header.masthead{
-    display:flex;align-items:center;justify-content:space-between;
-    padding:14px 24px;background:var(--paper-2);border-bottom:2px solid var(--ink);
-    flex-wrap:wrap;gap:10px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:14px 24px;
+    background:var(--paper-2);
+    border-bottom:2px solid var(--ink);
+    flex-wrap:wrap;
+    gap:10px;
   }
-  header.masthead h1{font-size:20px;margin:0;font-family:var(--serif);color:var(--ink);}
-  header.masthead .user-info{font-size:12px;color:var(--muted);}
-  header.masthead .actions-top{display:flex;gap:8px;align-items:center;}
+
+  header.masthead h1{
+    font-size:20px;
+    margin:0;
+    font-family:var(--serif);
+    color:var(--ink);
+  }
+
+  header.masthead .user-info{
+    font-size:12px;
+    color:var(--muted);
+  }
+
+  header.masthead .actions-top{
+    display:flex;
+    gap:8px;
+    align-items:center;
+  }
+
   button.btn-sm{
-    background:#fff;color:var(--ink);border:1px solid var(--line);
-    padding:6px 12px;border-radius:3px;cursor:pointer;font-size:12px;font-weight:600;
+    background:#fff;
+    color:var(--ink);
+    border:1px solid var(--line);
+    padding:6px 12px;
+    border-radius:3px;
+    cursor:pointer;
+    font-size:12px;
+    font-weight:600;
   }
-  button.btn-sm:hover{background:var(--paper);border-color:var(--teal);}
-  button.btn-danger{background:#fbecea;color:var(--flame);border-color:var(--flame);}
+
+  button.btn-sm:hover{
+    background:var(--paper);
+    border-color:var(--teal);
+  }
+
+  button.btn-danger{
+    background:#fbecea;
+    color:var(--flame);
+    border-color:var(--flame);
+  }
 
   /* Barra de Control Rápido Horizontal */
   .quick-bar{
-    background:var(--paper-2);padding:10px 24px;border-bottom:1px solid var(--line);
-    display:flex;flex-wrap:wrap;gap:12px;align-items:center;
+    background:var(--paper-2);
+    padding:10px 24px;
+    border-bottom:1px solid var(--line);
+    display:flex;
+    flex-wrap:wrap;
+    gap:12px;
+    align-items:center;
   }
-  .control-group{display:flex;flex-direction:column;gap:3px;flex:1;min-width:140px;}
-  .control-group label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;}
-  .control-group select, .control-group input[type="text"], .control-group input[type="number"]{
-    background:#fff;border:1px solid var(--line);color:var(--ink);padding:6px 8px;
-    border-radius:3px;font-size:13px;width:100%;
+
+  .control-group{
+    display:flex;
+    flex-direction:column;
+    gap:3px;
+    flex:1;
+    min-width:140px;
   }
-  .control-group select:focus, input:focus{outline:none;border-color:var(--teal);}
 
-  .checkbox-group{display:flex;align-items:center;gap:6px;margin-top:4px;}
-  .checkbox-group input{width:14px;height:14px;accent-color:var(--teal);cursor:pointer;}
-  .checkbox-group label{font-size:12px;color:var(--ink);cursor:pointer;}
+  .control-group label{
+    font-size:11px;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:0.5px;
+  }
 
-  /* Layout Principal (Mapa + Feed) */
-  .workspace{display:flex;flex:1;min-height:calc(100vh - 120px);}
+  .control-group select,
+  .control-group input[type="text"],
+  .control-group input[type="number"]{
+    background:#fff;
+    border:1px solid var(--line);
+    color:var(--ink);
+    padding:6px 8px;
+    border-radius:3px;
+    font-size:13px;
+    width:100%;
+  }
+
+  .control-group select:focus,
+  input:focus{
+    outline:none;
+    border-color:var(--teal);
+  }
+
+  .checkbox-group{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    margin-top:4px;
+  }
+
+  .checkbox-group input{
+    width:14px;
+    height:14px;
+    accent-color:var(--teal);
+    cursor:pointer;
+  }
+
+  .checkbox-group label{
+    font-size:12px;
+    color:var(--ink);
+    cursor:pointer;
+  }
+
+  /* Layout Principal */
+  .workspace{
+    display:flex;
+    flex:1;
+    min-height:calc(100vh - 120px);
+  }
+
   aside.sidebar{
-    width:340px;flex:none;background:var(--paper-2);border-right:1px solid var(--line);
-    display:flex;flex-direction:column;height:calc(100vh - 120px);position:sticky;top:0;
+    width:340px;
+    flex:none;
+    background:var(--paper-2);
+    border-right:1px solid var(--line);
+    display:flex;
+    flex-direction:column;
+    height:calc(100vh - 120px);
+    position:sticky;
+    top:0;
   }
-  .sidebar-header{
-    padding:12px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;
-  }
-  .view-tabs{display:flex;gap:4px;}
-  .view-tabs button{
-    background:#fff;border:1px solid var(--line);color:var(--muted);padding:5px 12px;
-    border-radius:3px;cursor:pointer;font-size:12px;font-weight:600;
-  }
-  .view-tabs button.active{background:var(--ink);color:#fff;border-color:var(--ink);}
 
-  .feed-list{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px;}
-  
-  #map-container{flex:1;position:relative;background:#E9ECE4;}
-  #map{width:100%;height:100%;min-height:400px;}
+  .sidebar-header{
+    padding:12px 16px;
+    border-bottom:1px solid var(--line);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+
+  .view-tabs{
+    display:flex;
+    gap:4px;
+  }
+
+  .view-tabs button{
+    background:#fff;
+    border:1px solid var(--line);
+    color:var(--muted);
+    padding:5px 12px;
+    border-radius:3px;
+    cursor:pointer;
+    font-size:12px;
+    font-weight:600;
+  }
+
+  .view-tabs button.active{
+    background:var(--ink);
+    color:#fff;
+    border-color:var(--ink);
+  }
+
+  .feed-list{
+    flex:1;
+    overflow-y:auto;
+    padding:12px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+
+  #map-container{
+    flex:1;
+    position:relative;
+    background:#E9ECE4;
+  }
+
+  #map{
+    width:100%;
+    height:100%;
+    min-height:400px;
+  }
 
   /* Tarjetas de Avistamiento */
   .card{
-    background:var(--paper-2);border:1px solid var(--line);border-left:4px solid var(--moss);
-    border-radius:3px;padding:12px;display:flex;flex-direction:column;gap:8px;
+    background:var(--paper-2);
+    border:1px solid var(--line);
+    border-left:4px solid var(--moss);
+    border-radius:3px;
+    padding:12px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
     transition:border-color 0.2s;
   }
-  .card:hover{border-color:var(--teal);}
-  .card.notable{border-left-color:var(--flame);}
-  .card.unconfirmed{border-left-color:var(--amber);}
-  
-  .card-top{display:flex;gap:10px;align-items:flex-start;}
-  .card-thumb{width:50px;height:50px;border-radius:4px;background:#fff;flex:none;overflow:hidden;border:1px solid var(--line);}
-  .card-thumb img{width:100%;height:100%;object-fit:cover;}
-  .card-thumb.empty::after{content:'\1F426';display:flex;align-items:center;justify-content:center;height:100%;font-size:20px;opacity:0.3;}
-  
-  .card-info{flex:1;min-width:0;}
-  .card-title{font-size:14px;font-weight:700;margin:0 0 2px 0;font-family:var(--serif);color:var(--ink);}
-  .card-sci{font-size:11.5px;color:var(--muted);font-style:italic;margin:0;}
-  
-  .badge{display:inline-block;font-size:10px;padding:2px 6px;border-radius:10px;font-weight:700;margin-left:4px;vertical-align:middle;}
-  .badge.new{background:var(--flame);color:#fff;}
-  .badge.notable{background:var(--moss);color:#fff;}
-  .badge.unconfirmed{background:var(--amber);color:#fff;}
-  
-  .card-meta{font-size:11.5px;color:var(--muted);line-height:1.4;}
-  .card-comment{font-size:11.5px;background:#fff;padding:6px 8px;border-radius:3px;border-left:2px solid var(--line);color:var(--ink);margin-top:4px;}
-  
-  .card-actions{display:flex;gap:6px;margin-top:2px;}
-  .card-actions a{
-    flex:1;text-align:center;background:#fff;color:var(--ink);text-decoration:none;
-    padding:5px;border-radius:3px;font-size:11.5px;font-weight:600;border:1px solid var(--line);
-  }
-  .card-actions a.wa{background:var(--teal);color:#fff;border-color:var(--teal);}
-  .card-actions a.wa:hover{background:var(--teal-dark);}
-  .card-actions a:hover{background:var(--paper);}
 
-  .status-text{font-size:11.5px;color:var(--muted);display:flex;flex-direction:column;text-align:right;}
-  .empty-state{text-align:center;padding:40px 20px;color:var(--muted);font-size:13px;}
+  .card:hover{
+    border-color:var(--teal);
+  }
+
+  .card.notable{
+    border-left-color:var(--flame);
+  }
+
+  .card.unconfirmed{
+    border-left-color:var(--amber);
+  }
+
+  .card-top{
+    display:flex;
+    gap:10px;
+    align-items:flex-start;
+  }
+
+  /* FOTO DEL AVE */
+  .card-thumb{
+    width:90px;
+    height:70px;
+    border-radius:5px;
+    background:#fff;
+    flex:none;
+    overflow:hidden;
+    border:1px solid var(--line);
+    position:relative;
+  }
+
+  .card-thumb img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+  }
+
+  .card-thumb.empty::after{
+    content:'🐦';
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    height:100%;
+    font-size:25px;
+    opacity:0.3;
+  }
+
+  .photo-source{
+    font-size:8px;
+    color:var(--muted);
+    margin-top:2px;
+    text-align:center;
+    line-height:1.1;
+  }
+
+  .card-info{
+    flex:1;
+    min-width:0;
+  }
+
+  .card-title{
+    font-size:14px;
+    font-weight:700;
+    margin:0 0 2px 0;
+    font-family:var(--serif);
+    color:var(--ink);
+  }
+
+  .card-sci{
+    font-size:11.5px;
+    color:var(--muted);
+    font-style:italic;
+    margin:0;
+  }
+
+  .badge{
+    display:inline-block;
+    font-size:10px;
+    padding:2px 6px;
+    border-radius:10px;
+    font-weight:700;
+    margin-left:4px;
+    vertical-align:middle;
+  }
+
+  .badge.new{
+    background:var(--flame);
+    color:#fff;
+  }
+
+  .badge.notable{
+    background:var(--moss);
+    color:#fff;
+  }
+
+  .badge.unconfirmed{
+    background:var(--amber);
+    color:#fff;
+  }
+
+  .card-meta{
+    font-size:11.5px;
+    color:var(--muted);
+    line-height:1.4;
+  }
+
+  .card-comment{
+    font-size:11.5px;
+    background:#fff;
+    padding:6px 8px;
+    border-radius:3px;
+    border-left:2px solid var(--line);
+    color:var(--ink);
+    margin-top:4px;
+  }
+
+  .card-actions{
+    display:flex;
+    gap:6px;
+    margin-top:2px;
+  }
+
+  .card-actions a{
+    flex:1;
+    text-align:center;
+    background:#fff;
+    color:var(--ink);
+    text-decoration:none;
+    padding:5px;
+    border-radius:3px;
+    font-size:11.5px;
+    font-weight:600;
+    border:1px solid var(--line);
+  }
+
+  .card-actions a.wa{
+    background:var(--teal);
+    color:#fff;
+    border-color:var(--teal);
+  }
+
+  .card-actions a.wa:hover{
+    background:var(--teal-dark);
+  }
+
+  .card-actions a:hover{
+    background:var(--paper);
+  }
+
+  .status-text{
+    font-size:11.5px;
+    color:var(--muted);
+    display:flex;
+    flex-direction:column;
+    text-align:right;
+  }
+
+  .empty-state{
+    text-align:center;
+    padding:40px 20px;
+    color:var(--muted);
+    font-size:13px;
+  }
 
   @media (max-width:850px){
-    .workspace{flex-direction:column;}
-    aside.sidebar{width:100%;height:50vh;position:relative;}
-    #map-container{height:50vh;}
+    .workspace{
+      flex-direction:column;
+    }
+
+    aside.sidebar{
+      width:100%;
+      height:50vh;
+      position:relative;
+    }
+
+    #map-container{
+      height:50vh;
+    }
+
+    .card-thumb{
+      width:80px;
+      height:65px;
+    }
   }
 </style>
 </head>
+
 <body>
 
-<!-- Login Rápido -->
+<!-- Login -->
 <div id="authScreen">
   <div class="auth-card">
-    <h2 id="authTitle">Acceso Bitácora</h2>
+    <h2 id="authTitle">Acceso a Bitácora</h2>
+
     <div id="authError" style="color:var(--flame);font-size:12px;margin-bottom:8px;"></div>
-    <label>Correo</label>
+
+    <label>Correo electrónico</label>
     <input type="email" id="authEmail" placeholder="usuario@correo.com">
+
     <label>Contraseña</label>
     <input type="password" id="authPassword" placeholder="••••••••">
+
     <button id="authBtn">Ingresar</button>
-    <div class="auth-switch" id="authSwitchMode">¿No tienes cuenta? Regístrate</div>
+
+    <div class="auth-switch" id="authSwitchMode">
+      ¿No tienes cuenta? Regístrate
+    </div>
   </div>
 </div>
 
+
 <!-- Aplicación Principal -->
 <div id="appContainer">
+
   <header class="masthead">
     <div>
       <h1>Bitácora eBird · Chile</h1>
-      <div class="user-info">Conectado como: <span id="userEmailSpan" style="color:var(--teal-dark);font-weight:600;"></span></div>
+
+      <div class="user-info">
+        Conectado como:
+        <span id="userEmailSpan" style="color:var(--teal-dark);font-weight:600;"></span>
+      </div>
     </div>
+
     <div class="actions-top">
+
       <div class="status-text">
         <span id="lastUpdate">Sin datos</span>
         <span id="nextUpdate" style="font-size:10px;"></span>
       </div>
-      <button class="btn-sm" id="btnRefresh">Actualizar</button>
-      <button class="btn-sm btn-danger" id="btnLogout">Salir</button>
+
+      <button class="btn-sm" id="btnRefresh">
+        Actualizar
+      </button>
+
+      <button class="btn-sm btn-danger" id="btnLogout">
+        Salir
+      </button>
+
     </div>
   </header>
 
-  <!-- Barra de Control Rápido Horizontal -->
+
+  <!-- Barra de Control -->
   <div class="quick-bar">
+
     <div class="control-group" style="max-width:180px;">
       <label>Zona</label>
+
       <select id="region">
         <option value="CL">Todo Chile</option>
         <option value="CL-AP">Arica y Parinacota</option>
@@ -211,77 +598,161 @@
       </select>
     </div>
 
+
     <div class="control-group" style="max-width:150px;">
       <label>Filtro</label>
+
       <select id="mode">
-        <option value="notable">Solo Raras</option>
-        <option value="all">Todas</option>
+        <option value="notable">Solo especies raras</option>
+        <option value="all">Todas las especies</option>
       </select>
     </div>
 
+
     <div class="control-group" style="max-width:80px;">
-      <label>Días</label>
-      <input type="number" id="backDays" min="1" max="14" value="2">
+      <label>Últimos días</label>
+
+      <input
+        type="number"
+        id="backDays"
+        min="1"
+        max="14"
+        value="2"
+      >
     </div>
 
-    <div class="control-group" style="max-width:110px;">
-      <label>Nombres</label>
+
+    <div class="control-group" style="max-width:130px;">
+      <label>Nombre mostrado</label>
+
       <select id="nameLocale">
-        <option value="es_CL">Español (CL)</option>
+        <option value="es_CL">Español (Chile)</option>
         <option value="es">Español</option>
         <option value="en">Inglés</option>
         <option value="sci">Científico</option>
       </select>
     </div>
 
+
     <div class="control-group" style="flex:2;min-width:200px;">
-      <label>Lista CSV (Vitalicia)</label>
-      <input type="file" id="lifeListFile" accept=".csv" style="font-size:11.5px;padding:3px;">
+      <label>Lista de especies CSV (vitalicia)</label>
+
+      <input
+        type="file"
+        id="lifeListFile"
+        accept=".csv"
+        style="font-size:11.5px;padding:3px;"
+      >
     </div>
+
 
     <div class="control-group" style="max-width:150px;">
-      <label>WhatsApp Amigo</label>
-      <input type="text" id="friendPhone" placeholder="56912345678">
+      <label>WhatsApp de amigo</label>
+
+      <input
+        type="text"
+        id="friendPhone"
+        placeholder="56912345678"
+      >
     </div>
+
 
     <div style="display:flex;flex-direction:column;gap:4px;">
+
       <div class="checkbox-group">
         <input type="checkbox" id="hideSeenToggle">
-        <label for="hideSeenToggle">Ocultar vistas</label>
+        <label for="hideSeenToggle">Ocultar especies vistas</label>
       </div>
+
       <div class="checkbox-group">
         <input type="checkbox" id="includeProvisional">
-        <label for="includeProvisional">En revisión</label>
+        <label for="includeProvisional">Incluir registros en revisión</label>
       </div>
+
     </div>
 
-    <button class="btn-sm" id="btnSave" style="background:var(--teal);color:#fff;font-weight:700;padding:7px 14px;margin-top:auto;border:none;">Aplicar</button>
+
+    <button
+      class="btn-sm"
+      id="btnSave"
+      style="background:var(--teal);color:#fff;font-weight:700;padding:7px 14px;margin-top:auto;border:none;"
+    >
+      Aplicar
+    </button>
+
   </div>
 
-  <!-- Workspace con Sidebar Feed y Mapa -->
+
+  <!-- Workspace -->
   <div class="workspace">
+
     <aside class="sidebar">
+
       <div class="sidebar-header">
-        <span id="lifeStatus" style="font-size:11.5px;color:var(--muted);">Cargando lista...</span>
+
+        <span
+          id="lifeStatus"
+          style="font-size:11.5px;color:var(--muted);"
+        >
+          Cargando lista...
+        </span>
+
         <div class="view-tabs">
-          <button id="tabFeed" class="active">Lista</button>
-          <button id="tabMapToggle">Mapa</button>
+
+          <button id="tabFeed" class="active">
+            Lista
+          </button>
+
+          <button id="tabMapToggle">
+            Mapa
+          </button>
+
         </div>
+
       </div>
+
       <div id="feed" class="feed-list"></div>
+
     </aside>
+
 
     <div id="map-container">
       <div id="map"></div>
     </div>
+
   </div>
+
 </div>
 
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
-  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+
+  import {
+    initializeApp
+  } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+
+  import {
+    getAuth,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    signOut,
+    onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+
+  import {
+    getFirestore,
+    doc,
+    getDoc,
+    setDoc
+  } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+
+
+  /* =========================================================
+     FIREBASE
+     ========================================================= */
 
   const firebaseConfig = {
     apiKey: "AIzaSyBRs59_2hhEyyFGuZ6jn2XgQS1Ve74AWrg",
@@ -293,382 +764,2288 @@
     measurementId: "G-ECNHD7DLH4"
   };
 
+
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
 
-  const EMBEDDED_API_KEY = '89f4bf7f-47ac-4e68-949f-de69c890bce7';
-  let currentUser = null;
-  
-  let cachedState = localStorage.getItem('ebird_classic_state');
-  let state = cachedState ? JSON.parse(cachedState) : {
-    apiKey: EMBEDDED_API_KEY, region:'CL', mode:'notable', backDays:2, interval:10,
-    friendPhone:'', lifeList:[], hideSeen:false, nameLocale:'es-CL', includeProvisional:false, seenSubIds:[]
-  };
 
-  let map, markerLayer;
-  let pollTimer = null, countdownTimer = null, nextRunAt = null;
-  
-  let cachedObservations = localStorage.getItem('ebird_fast_obs_cache');
-  let lastObservations = cachedObservations ? JSON.parse(cachedObservations) : [];
+  const EMBEDDED_API_KEY =
+    '89f4bf7f-47ac-4e68-949f-de69c890bce7';
+
+
+  let currentUser = null;
+
+
+  /* =========================================================
+     ESTADO
+     ========================================================= */
+
+  let cachedState =
+    localStorage.getItem('ebird_classic_state');
+
+
+  let state = cachedState
+    ? JSON.parse(cachedState)
+    : {
+        apiKey: EMBEDDED_API_KEY,
+        region:'CL',
+        mode:'notable',
+        backDays:2,
+        interval:10,
+        friendPhone:'',
+        lifeList:[],
+        hideSeen:false,
+        nameLocale:'es-CL',
+        includeProvisional:false,
+        seenSubIds:[],
+        imageCache:{}
+      };
+
+
+  /* Compatibilidad con estados anteriores */
+  if(!state.imageCache){
+    state.imageCache = {};
+  }
+
+
+  let map,
+      markerLayer;
+
+
+  let pollTimer = null,
+      countdownTimer = null,
+      nextRunAt = null;
+
+
+  let cachedObservations =
+    localStorage.getItem('ebird_fast_obs_cache');
+
+
+  let lastObservations =
+    cachedObservations
+      ? JSON.parse(cachedObservations)
+      : [];
+
 
   let isRegistering = false;
-  document.getElementById('authSwitchMode').addEventListener('click', () => {
-    isRegistering = !isRegistering;
-    document.getElementById('authTitle').textContent = isRegistering ? 'Crear Cuenta' : 'Acceso Bitácora';
-    document.getElementById('authBtn').textContent = isRegistering ? 'Registrarse' : 'Ingresar';
-    document.getElementById('authSwitchMode').textContent = isRegistering ? '¿Ya tienes cuenta? Ingresa' : '¿No tienes cuenta? Regístrate';
-  });
 
-  document.getElementById('authBtn').addEventListener('click', () => {
-    const email = document.getElementById('authEmail').value.trim();
-    const pass = document.getElementById('authPassword').value.trim();
-    const errBox = document.getElementById('authError');
-    errBox.textContent = '';
-    if(!email || !pass){ errBox.textContent = 'Completa los campos.'; return; }
-    if(isRegistering){
-      createUserWithEmailAndPassword(auth, email, pass).catch(e => { errBox.textContent = e.message; });
-    } else {
-      signInWithEmailAndPassword(auth, email, pass).catch(e => { errBox.textContent = e.message; });
-    }
-  });
 
-  document.getElementById('btnLogout').addEventListener('click', () => {
-    signOut(auth).then(() => {
-      localStorage.removeItem('ebird_classic_state');
-      localStorage.removeItem('ebird_fast_obs_cache');
-      location.reload();
+  /* =========================================================
+     LOGIN
+     ========================================================= */
+
+  document
+    .getElementById('authSwitchMode')
+    .addEventListener('click', () => {
+
+      isRegistering = !isRegistering;
+
+      document.getElementById('authTitle').textContent =
+        isRegistering
+          ? 'Crear cuenta'
+          : 'Acceso a Bitácora';
+
+      document.getElementById('authBtn').textContent =
+        isRegistering
+          ? 'Registrarse'
+          : 'Ingresar';
+
+      document.getElementById('authSwitchMode').textContent =
+        isRegistering
+          ? '¿Ya tienes cuenta? Ingresa'
+          : '¿No tienes cuenta? Regístrate';
     });
-  });
+
+
+  document
+    .getElementById('authBtn')
+    .addEventListener('click', () => {
+
+      const email =
+        document.getElementById('authEmail')
+          .value
+          .trim();
+
+      const pass =
+        document.getElementById('authPassword')
+          .value
+          .trim();
+
+      const errBox =
+        document.getElementById('authError');
+
+      errBox.textContent = '';
+
+
+      if(!email || !pass){
+
+        errBox.textContent =
+          'Completa el correo electrónico y la contraseña.';
+
+        return;
+      }
+
+
+      if(isRegistering){
+
+        createUserWithEmailAndPassword(
+          auth,
+          email,
+          pass
+        ).catch(e => {
+
+          errBox.textContent =
+            traducirErrorFirebase(e);
+        });
+
+      }else{
+
+        signInWithEmailAndPassword(
+          auth,
+          email,
+          pass
+        ).catch(e => {
+
+          errBox.textContent =
+            traducirErrorFirebase(e);
+        });
+
+      }
+
+    });
+
+
+  function traducirErrorFirebase(error){
+
+    const code = error && error.code
+      ? error.code
+      : '';
+
+    const mensajes = {
+
+      'auth/invalid-email':
+        'El correo electrónico no es válido.',
+
+      'auth/user-not-found':
+        'No existe una cuenta con este correo.',
+
+      'auth/wrong-password':
+        'La contraseña es incorrecta.',
+
+      'auth/invalid-credential':
+        'El correo o la contraseña son incorrectos.',
+
+      'auth/email-already-in-use':
+        'Este correo ya está registrado.',
+
+      'auth/weak-password':
+        'La contraseña es demasiado débil.',
+
+      'auth/network-request-failed':
+        'No hay conexión con el servidor.',
+
+      'auth/too-many-requests':
+        'Demasiados intentos. Inténtalo nuevamente más tarde.'
+    };
+
+
+    return mensajes[code] ||
+      'No se pudo completar la operación. Inténtalo nuevamente.';
+  }
+
+
+  /* =========================================================
+     CERRAR SESIÓN
+     ========================================================= */
+
+  document
+    .getElementById('btnLogout')
+    .addEventListener('click', () => {
+
+      signOut(auth).then(() => {
+
+        localStorage.removeItem(
+          'ebird_classic_state'
+        );
+
+        localStorage.removeItem(
+          'ebird_fast_obs_cache'
+        );
+
+        location.reload();
+
+      });
+
+    });
+
+
+  /* =========================================================
+     ESTADO DE AUTENTICACIÓN
+     ========================================================= */
 
   onAuthStateChanged(auth, user => {
+
     if(user){
+
       currentUser = user;
-      document.getElementById('authScreen').style.display = 'none';
-      document.getElementById('appContainer').style.display = 'flex';
-      document.getElementById('userEmailSpan').textContent = user.email;
-      
+
+      document.getElementById(
+        'authScreen'
+      ).style.display = 'none';
+
+      document.getElementById(
+        'appContainer'
+      ).style.display = 'flex';
+
+      document.getElementById(
+        'userEmailSpan'
+      ).textContent = user.email;
+
+
       fillForm();
+
       renderLifeStatus();
+
       initMap();
 
+
       if(lastObservations.length > 0){
+
         renderCurrentData();
-        document.getElementById('lastUpdate').textContent = 'Caché local (Actualizando...)';
+
+        document.getElementById(
+          'lastUpdate'
+        ).textContent =
+          'Datos guardados · Actualizando...';
       }
+
 
       fetchObservations();
 
-      getDoc(doc(db, 'users', currentUser.uid)).then(docSnap => {
+
+      getDoc(
+        doc(db, 'users', currentUser.uid)
+      )
+      .then(docSnap => {
+
         if(docSnap.exists()){
+
           const data = docSnap.data();
-          if(data.preferences) Object.assign(state, data.preferences);
-          if(data.lifeList && data.lifeList.length > 0) state.lifeList = data.lifeList;
-          localStorage.setItem('ebird_classic_state', JSON.stringify(state));
+
+
+          if(data.preferences){
+
+            Object.assign(
+              state,
+              data.preferences
+            );
+          }
+
+
+          if(
+            data.lifeList &&
+            data.lifeList.length > 0
+          ){
+
+            state.lifeList =
+              data.lifeList;
+          }
+
+
+          localStorage.setItem(
+            'ebird_classic_state',
+            JSON.stringify(state)
+          );
+
+
           fillForm();
+
           renderLifeStatus();
+
           renderCurrentData();
+
         }
-      }).catch(() => {});
-    } else {
+
+      })
+      .catch(() => {});
+
+
+    }else{
+
       currentUser = null;
-      document.getElementById('authScreen').style.display = 'flex';
-      document.getElementById('appContainer').style.display = 'none';
+
+      document.getElementById(
+        'authScreen'
+      ).style.display = 'flex';
+
+      document.getElementById(
+        'appContainer'
+      ).style.display = 'none';
+
     }
+
   });
+
+
+  /* =========================================================
+     GUARDAR DATOS EN LA NUBE
+     ========================================================= */
 
   async function saveUserDataToCloud(){
-    localStorage.setItem('ebird_classic_state', JSON.stringify(state));
+
+    localStorage.setItem(
+      'ebird_classic_state',
+      JSON.stringify(state)
+    );
+
+
     if(!currentUser) return;
-    try {
-      await setDoc(doc(db, 'users', currentUser.uid), {
-        preferences: {
-          region: state.region, mode: state.mode, backDays: state.backDays,
-          interval: state.interval, friendPhone: state.friendPhone,
-          hideSeen: state.hideSeen, nameLocale: state.nameLocale, includeProvisional: state.includeProvisional
+
+
+    try{
+
+      await setDoc(
+        doc(db, 'users', currentUser.uid),
+        {
+          preferences:{
+            region:state.region,
+            mode:state.mode,
+            backDays:state.backDays,
+            interval:state.interval,
+            friendPhone:state.friendPhone,
+            hideSeen:state.hideSeen,
+            nameLocale:state.nameLocale,
+            includeProvisional:
+              state.includeProvisional
+          },
+
+          lifeList:state.lifeList
+
         },
-        lifeList: state.lifeList
-      }, {merge: true});
-    } catch(e) { console.error("Error sincronizando en nube:", e); }
+        {
+          merge:true
+        }
+      );
+
+    }catch(e){
+
+      console.error(
+        "Error sincronizando en la nube:",
+        e
+      );
+
+    }
+
   }
+
+
+  /* =========================================================
+     CSV
+     ========================================================= */
 
   function parseCSV(text){
-    const lines = text.split(/\r\n|\n|\r/).filter(l => l.trim().length);
+
+    const lines =
+      text
+        .split(/\r\n|\n|\r/)
+        .filter(
+          l => l.trim().length
+        );
+
+
     if(!lines.length) return [];
-    const headers = splitCSVLine(lines[0]).map(h => h.trim().toLowerCase());
-    const sciIdx = headers.findIndex(h => h.indexOf('scientific') > -1);
-    const comIdx = headers.findIndex(h => h.indexOf('common name') > -1 || h === 'species');
+
+
+    const headers =
+      splitCSVLine(lines[0])
+        .map(
+          h => h.trim().toLowerCase()
+        );
+
+
+    const sciIdx =
+      headers.findIndex(
+        h => h.indexOf('scientific') > -1
+      );
+
+
+    const comIdx =
+      headers.findIndex(
+        h =>
+          h.indexOf('common name') > -1 ||
+          h === 'species'
+      );
+
+
     const seen = {};
-    for(let i=1; i<lines.length; i++){
-      const cols = splitCSVLine(lines[i]);
-      const sci = sciIdx > -1 ? (cols[sciIdx]||'').trim().toLowerCase() : '';
-      const com = comIdx > -1 ? (cols[comIdx]||'').trim() : '';
-      const key = sci || normalizeText(com);
+
+
+    for(
+      let i=1;
+      i<lines.length;
+      i++
+    ){
+
+      const cols =
+        splitCSVLine(lines[i]);
+
+
+      const sci =
+        sciIdx > -1
+          ? (cols[sciIdx] || '')
+              .trim()
+              .toLowerCase()
+          : '';
+
+
+      const com =
+        comIdx > -1
+          ? (cols[comIdx] || '')
+              .trim()
+          : '';
+
+
+      const key =
+        sci ||
+        normalizeText(com);
+
+
       if(!key) continue;
-      if(!seen[key]) seen[key] = {sci: sci, common: normalizeText(com)};
+
+
+      if(!seen[key]){
+
+        seen[key] = {
+          sci:sci,
+          common:normalizeText(com)
+        };
+
+      }
+
     }
+
+
     return Object.values(seen);
+
   }
+
 
   function splitCSVLine(line){
-    const out = []; let cur = ''; let inQuotes = false;
-    for(let i=0; i<line.length; i++){
+
+    const out = [];
+
+    let cur = '';
+
+    let inQuotes = false;
+
+
+    for(
+      let i=0;
+      i<line.length;
+      i++
+    ){
+
       const ch = line[i];
-      if(ch === '"'){ inQuotes = !inQuotes; continue; }
-      if(ch === ',' && !inQuotes){ out.push(cur); cur=''; continue; }
+
+
+      if(ch === '"'){
+
+        inQuotes = !inQuotes;
+
+        continue;
+      }
+
+
+      if(
+        ch === ',' &&
+        !inQuotes
+      ){
+
+        out.push(cur);
+
+        cur='';
+
+        continue;
+      }
+
+
       cur += ch;
+
     }
+
+
     out.push(cur);
+
     return out;
-  }
-  function normalizeText(t){
-    return (t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
-  }
-  function isInLifeList(obs){
-    if(!state.lifeList.length) return false;
-    const sci = (obs.sciName||'').toLowerCase();
-    const com = normalizeText(obs.comName||'');
-    return state.lifeList.some(item => (item.sci && sci && item.sci === sci) || (item.common && com && item.common === com));
+
   }
 
-  document.getElementById('lifeListFile').addEventListener('change', e => {
-    const file = e.target.files[0];
-    if(!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => {
-      state.lifeList = parseCSV(ev.target.result);
-      saveUserDataToCloud();
-      renderLifeStatus();
-      lastObservations.forEach(obs => { obs._inLifeList = isInLifeList(obs); });
-      renderCurrentData();
-    };
-    reader.readAsText(file);
-  });
+
+  function normalizeText(t){
+
+    return (t || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(
+        /[\u0300-\u036f]/g,
+        ''
+      )
+      .trim();
+
+  }
+
+
+  function isInLifeList(obs){
+
+    if(!state.lifeList.length)
+      return false;
+
+
+    const sci =
+      (obs.sciName || '')
+        .toLowerCase();
+
+
+    const com =
+      normalizeText(
+        obs.comName || ''
+      );
+
+
+    return state.lifeList.some(
+      item =>
+        (
+          item.sci &&
+          sci &&
+          item.sci === sci
+        ) ||
+        (
+          item.common &&
+          com &&
+          item.common === com
+        )
+    );
+
+  }
+
+
+  /* =========================================================
+     CARGA DE LISTA VITALICIA
+     ========================================================= */
+
+  document
+    .getElementById('lifeListFile')
+    .addEventListener(
+      'change',
+      e => {
+
+        const file =
+          e.target.files[0];
+
+        if(!file) return;
+
+
+        const reader =
+          new FileReader();
+
+
+        reader.onload = ev => {
+
+          state.lifeList =
+            parseCSV(
+              ev.target.result
+            );
+
+
+          saveUserDataToCloud();
+
+          renderLifeStatus();
+
+
+          lastObservations.forEach(
+            obs => {
+
+              obs._inLifeList =
+                isInLifeList(obs);
+
+            }
+          );
+
+
+          renderCurrentData();
+
+        };
+
+
+        reader.readAsText(file);
+
+      }
+    );
+
+
+  /* =========================================================
+     FORMULARIO
+     ========================================================= */
 
   function fillForm(){
-    document.getElementById('region').value = state.region || 'CL';
-    document.getElementById('mode').value = state.mode || 'notable';
-    document.getElementById('includeProvisional').checked = !!state.includeProvisional;
-    document.getElementById('nameLocale').value = state.nameLocale || 'es-CL';
-    document.getElementById('backDays').value = state.backDays || 2;
-    document.getElementById('friendPhone').value = state.friendPhone || '';
-    document.getElementById('hideSeenToggle').checked = !!state.hideSeen;
+
+    document.getElementById(
+      'region'
+    ).value =
+      state.region || 'CL';
+
+
+    document.getElementById(
+      'mode'
+    ).value =
+      state.mode || 'notable';
+
+
+    document.getElementById(
+      'includeProvisional'
+    ).checked =
+      !!state.includeProvisional;
+
+
+    document.getElementById(
+      'nameLocale'
+    ).value =
+      state.nameLocale || 'es-CL';
+
+
+    document.getElementById(
+      'backDays'
+    ).value =
+      state.backDays || 2;
+
+
+    document.getElementById(
+      'friendPhone'
+    ).value =
+      state.friendPhone || '';
+
+
+    document.getElementById(
+      'hideSeenToggle'
+    ).checked =
+      !!state.hideSeen;
+
   }
+
 
   function readForm(){
-    state.region = document.getElementById('region').value;
-    state.mode = document.getElementById('mode').value;
-    state.includeProvisional = document.getElementById('includeProvisional').checked;
-    state.nameLocale = document.getElementById('nameLocale').value;
-    state.backDays = Math.min(14, Math.max(1, parseInt(document.getElementById('backDays').value,10) || 2));
-    state.friendPhone = document.getElementById('friendPhone').value.trim().replace(/[^0-9]/g,'');
-    state.hideSeen = document.getElementById('hideSeenToggle').checked;
+
+    state.region =
+      document.getElementById(
+        'region'
+      ).value;
+
+
+    state.mode =
+      document.getElementById(
+        'mode'
+      ).value;
+
+
+    state.includeProvisional =
+      document.getElementById(
+        'includeProvisional'
+      ).checked;
+
+
+    state.nameLocale =
+      document.getElementById(
+        'nameLocale'
+      ).value;
+
+
+    state.backDays =
+      Math.min(
+        14,
+        Math.max(
+          1,
+          parseInt(
+            document.getElementById(
+              'backDays'
+            ).value,
+            10
+          ) || 2
+        )
+      );
+
+
+    state.friendPhone =
+      document.getElementById(
+        'friendPhone'
+      ).value
+      .trim()
+      .replace(
+        /[^0-9]/g,
+        ''
+      );
+
+
+    state.hideSeen =
+      document.getElementById(
+        'hideSeenToggle'
+      ).checked;
+
+
     saveUserDataToCloud();
+
   }
+
 
   function renderLifeStatus(){
-    const box = document.getElementById('lifeStatus');
-    if(state.lifeList && state.lifeList.length){
-      box.innerHTML = 'Lista Nube: <b>'+state.lifeList.length+' spp</b>';
-    } else {
-      box.textContent = 'Sin lista CSV cargada.';
+
+    const box =
+      document.getElementById(
+        'lifeStatus'
+      );
+
+
+    if(
+      state.lifeList &&
+      state.lifeList.length
+    ){
+
+      box.innerHTML =
+        'Lista vitalicia: <b>' +
+        state.lifeList.length +
+        ' especies</b>';
+
+    }else{
+
+      box.textContent =
+        'Sin lista CSV cargada.';
+
     }
+
   }
+
+
+  /* =========================================================
+     MAPA
+     ========================================================= */
 
   function initMap(){
+
     if(map) return;
-    map = L.map('map', {zoomControl:false}).setView([-33.45,-70.66], 5);
-    L.control.zoom({position: 'bottomright'}).addTo(map);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 18, attribution: '&copy; OpenStreetMap'
+
+
+    map =
+      L.map(
+        'map',
+        {
+          zoomControl:false
+        }
+      )
+      .setView(
+        [-33.45,-70.66],
+        5
+      );
+
+
+    L.control.zoom({
+      position:'bottomright'
     }).addTo(map);
-    markerLayer = L.layerGroup().addTo(map);
+
+
+    L.tileLayer(
+      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      {
+        maxZoom:18,
+        attribution:'&copy; OpenStreetMap'
+      }
+    ).addTo(map);
+
+
+    markerLayer =
+      L.layerGroup()
+        .addTo(map);
+
   }
+
+
+  /* =========================================================
+     URL EBIRD
+     ========================================================= */
 
   function buildUrl(){
-    let base = 'https://api.ebird.org/v2/data/obs/' + encodeURIComponent(state.region) + '/recent';
-    if(state.mode === 'notable') base += '/notable';
-    const nameLocale = state.nameLocale === 'sci' ? 'es-CL' : state.nameLocale;
-    const params = ['back='+state.backDays, 'sppLocale='+nameLocale, 'detail=full', 'key='+encodeURIComponent(state.apiKey)];
-    if(state.mode === 'all') params.push('maxResults=300');
-    if(state.includeProvisional) params.push('includeProvisional=true');
-    return base + '?' + params.join('&');
+
+    let base =
+      'https://api.ebird.org/v2/data/obs/' +
+      encodeURIComponent(
+        state.region
+      ) +
+      '/recent';
+
+
+    if(state.mode === 'notable'){
+
+      base += '/notable';
+
+    }
+
+
+    const nameLocale =
+      state.nameLocale === 'sci'
+        ? 'es-CL'
+        : state.nameLocale;
+
+
+    const params = [
+      'back=' + state.backDays,
+      'sppLocale=' + nameLocale,
+      'detail=full',
+      'key=' +
+        encodeURIComponent(
+          state.apiKey
+        )
+    ];
+
+
+    if(state.mode === 'all'){
+
+      params.push(
+        'maxResults=300'
+      );
+
+    }
+
+
+    if(state.includeProvisional){
+
+      params.push(
+        'includeProvisional=true'
+      );
+
+    }
+
+
+    return (
+      base +
+      '?' +
+      params.join('&')
+    );
+
   }
+
+
+  /* =========================================================
+     WIKIPEDIA
+     
+     Busca imagen usando principalmente
+     el nombre científico del ave.
+     ========================================================= */
+
+  async function getWikipediaImage(
+    sciName,
+    commonName = ''
+  ){
+
+    const names = [];
+
+
+    if(sciName){
+
+      names.push(
+        sciName.trim()
+      );
+
+    }
+
+
+    if(commonName){
+
+      names.push(
+        commonName.trim()
+      );
+
+    }
+
+
+    for(
+      const lang of ['es','en']
+    ){
+
+      for(
+        const searchName of names
+      ){
+
+        try{
+
+          const url =
+            `https://${lang}.wikipedia.org/w/api.php` +
+            `?action=query` +
+            `&generator=search` +
+            `&gsrsearch=${encodeURIComponent(searchName)}` +
+            `&gsrnamespace=0` +
+            `&gsrlimit=5` +
+            `&prop=pageimages` +
+            `&piprop=thumbnail` +
+            `&pithumbsize=500` +
+            `&format=json` +
+            `&origin=*`;
+
+
+          const response =
+            await fetch(url);
+
+
+          if(!response.ok)
+            continue;
+
+
+          const data =
+            await response.json();
+
+
+          if(
+            !data.query ||
+            !data.query.pages
+          ){
+
+            continue;
+
+          }
+
+
+          const pages =
+            Object.values(
+              data.query.pages
+            );
+
+
+          /*
+           * Primero intentamos encontrar
+           * coincidencia exacta.
+           */
+
+          const exactPage =
+            pages.find(
+              page =>
+                page.thumbnail &&
+                page.title &&
+                page.title
+                  .toLowerCase()
+                  === searchName.toLowerCase()
+            );
+
+
+          if(
+            exactPage &&
+            exactPage.thumbnail
+          ){
+
+            return {
+              url:
+                exactPage.thumbnail.source,
+
+              source:
+                'Wikipedia'
+            };
+
+          }
+
+
+          /*
+           * Si no hay coincidencia exacta,
+           * usamos una página con imagen.
+           */
+
+          const pageWithImage =
+            pages.find(
+              page =>
+                page.thumbnail &&
+                page.thumbnail.source
+            );
+
+
+          if(
+            pageWithImage &&
+            pageWithImage.thumbnail
+          ){
+
+            return {
+              url:
+                pageWithImage.thumbnail.source,
+
+              source:
+                'Wikipedia'
+            };
+
+          }
+
+        }catch(error){
+
+          console.warn(
+            'No se pudo obtener imagen de Wikipedia:',
+            error
+          );
+
+        }
+
+      }
+
+    }
+
+
+    return {
+      url:'',
+      source:''
+    };
+
+  }
+
+
+  /* =========================================================
+     OBTENER IMAGEN DEL AVE
+     
+     1. Primero eBird
+     2. Después Wikipedia
+     3. Después caché
+     ========================================================= */
+
+  async function getBirdImage(obs){
+
+    const sci =
+      (obs.sciName || '')
+        .trim();
+
+
+    const common =
+      (obs.comName || '')
+        .trim();
+
+
+    const cacheKey =
+      normalizeText(
+        sci || common
+      );
+
+
+    /*
+     * Primero revisamos la caché.
+     */
+
+    if(
+      cacheKey &&
+      state.imageCache &&
+      state.imageCache[cacheKey]
+    ){
+
+      return state.imageCache[cacheKey];
+
+    }
+
+
+    /*
+     * Primero usamos una fotografía
+     * entregada por eBird.
+     */
+
+    if(
+      obs.media &&
+      obs.media.length > 0
+    ){
+
+      const photo =
+        obs.media.find(
+          m =>
+            m.mediaType === 'photo' &&
+            m.url
+        );
+
+
+      if(photo && photo.url){
+
+        const result = {
+          url:photo.url,
+          source:'eBird'
+        };
+
+
+        if(cacheKey){
+
+          state.imageCache[cacheKey] =
+            result;
+
+        }
+
+
+        return result;
+
+      }
+
+    }
+
+
+    /*
+     * Si eBird no tiene foto,
+     * buscamos automáticamente en Wikipedia.
+     */
+
+    const wikipediaResult =
+      await getWikipediaImage(
+        sci,
+        common
+      );
+
+
+    if(
+      wikipediaResult &&
+      wikipediaResult.url
+    ){
+
+      if(cacheKey){
+
+        state.imageCache[cacheKey] =
+          wikipediaResult;
+
+      }
+
+
+      return wikipediaResult;
+
+    }
+
+
+    return {
+      url:'',
+      source:''
+    };
+
+  }
+
+
+  /* =========================================================
+     OBTENER OBSERVACIONES
+     ========================================================= */
 
   function fetchObservations(){
-    const directUrl = buildUrl();
-    if(lastObservations.length === 0) document.getElementById('lastUpdate').textContent = 'Buscando...';
+
+    const directUrl =
+      buildUrl();
+
+
+    if(
+      lastObservations.length === 0
+    ){
+
+      document.getElementById(
+        'lastUpdate'
+      ).textContent =
+        'Buscando observaciones...';
+
+    }
+
+
     fetch(directUrl)
-      .then(res => { if(!res.ok) throw new Error(); return res.json(); })
-      .then(data => { handleNewData(data); })
-      .catch(() => {
-        fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(directUrl))
-          .then(res => res.json())
-          .then(data => { handleNewData(data); })
-          .catch(() => { if(lastObservations.length === 0) document.getElementById('lastUpdate').textContent = 'Error red'; });
+
+      .then(res => {
+
+        if(!res.ok)
+          throw new Error();
+
+        return res.json();
+
       })
-      .finally(() => { scheduleNext(); });
+
+      .then(data => {
+
+        handleNewData(data);
+
+      })
+
+      .catch(() => {
+
+        fetch(
+          'https://api.allorigins.win/raw?url=' +
+          encodeURIComponent(
+            directUrl
+          )
+        )
+
+        .then(res => res.json())
+
+        .then(data => {
+
+          handleNewData(data);
+
+        })
+
+        .catch(() => {
+
+          if(
+            lastObservations.length === 0
+          ){
+
+            document.getElementById(
+              'lastUpdate'
+            ).textContent =
+              'Error de conexión.';
+
+          }
+
+        });
+
+      })
+
+      .finally(() => {
+
+        scheduleNext();
+
+      });
+
   }
 
-  function handleNewData(data){
+
+  /* =========================================================
+     PROCESAR NUEVAS OBSERVACIONES
+     ========================================================= */
+
+  async function handleNewData(data){
+
     const seenSet = {};
-    state.seenSubIds.forEach(id => { seenSet[id]=true; });
-    data.forEach(obs => {
-      obs._isNew = !seenSet[obs.subId];
-      obs._inLifeList = isInLifeList(obs);
-      obs._unconfirmed = (obs.obsValid === false) || (obs.obsReviewed === false);
-      
-      obs._imageUrl = '';
-      if(obs.media && obs.media.length > 0){
-        const photo = obs.media.find(m => m.mediaType === 'photo' || m.url);
-        if(photo && photo.url) obs._imageUrl = photo.url;
+
+
+    state.seenSubIds.forEach(
+      id => {
+
+        seenSet[id] = true;
+
       }
-    });
-    data.sort((a,b) => new Date(b.obsDt) - new Date(a.obsDt));
-    data.forEach(obs => { seenSet[obs.subId]=true; });
-    state.seenSubIds = Object.keys(seenSet);
+    );
 
-    lastObservations = data;
-    try { localStorage.setItem('ebird_fast_obs_cache', JSON.stringify(data)); } catch(e){}
 
-    document.getElementById('lastUpdate').textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'});
+    /*
+     * Procesamos los registros.
+     */
+
+    for(
+      const obs of data
+    ){
+
+      obs._isNew =
+        !seenSet[obs.subId];
+
+
+      obs._inLifeList =
+        isInLifeList(obs);
+
+
+      obs._unconfirmed =
+        (
+          obs.obsValid === false
+        ) ||
+        (
+          obs.obsReviewed === false
+        );
+
+
+      /*
+       * Foto del ave.
+       *
+       * eBird primero.
+       * Wikipedia como alternativa.
+       */
+
+      const imageResult =
+        await getBirdImage(obs);
+
+
+      obs._imageUrl =
+        imageResult.url || '';
+
+
+      obs._imageSource =
+        imageResult.source || '';
+
+
+      seenSet[obs.subId] =
+        true;
+
+    }
+
+
+    /*
+     * Ordenar desde la observación
+     * más reciente a la más antigua.
+     */
+
+    data.sort(
+      (a,b) =>
+        new Date(b.obsDt) -
+        new Date(a.obsDt)
+    );
+
+
+    state.seenSubIds =
+      Object.keys(seenSet);
+
+
+    lastObservations =
+      data;
+
+
+    /*
+     * Guardar observaciones en caché.
+     */
+
+    try{
+
+      localStorage.setItem(
+        'ebird_fast_obs_cache',
+        JSON.stringify(data)
+      );
+
+    }catch(e){}
+
+
+    /*
+     * Guardar caché de imágenes.
+     */
+
+    try{
+
+      localStorage.setItem(
+        'ebird_image_cache',
+        JSON.stringify(
+          state.imageCache
+        )
+      );
+
+    }catch(e){}
+
+
+    saveUserDataToCloud();
+
+
+    document.getElementById(
+      'lastUpdate'
+    ).textContent =
+      'Actualizado ' +
+      new Date()
+        .toLocaleTimeString(
+          'es-CL',
+          {
+            hour:'2-digit',
+            minute:'2-digit'
+          }
+        );
+
+
     renderCurrentData();
+
   }
+
+
+  /* =========================================================
+     RECUPERAR CACHÉ DE IMÁGENES
+     ========================================================= */
+
+  try{
+
+    const cachedImages =
+      localStorage.getItem(
+        'ebird_image_cache'
+      );
+
+
+    if(cachedImages){
+
+      const parsed =
+        JSON.parse(
+          cachedImages
+        );
+
+
+      if(parsed){
+
+        state.imageCache =
+          Object.assign(
+            {},
+            state.imageCache || {},
+            parsed
+          );
+
+      }
+
+    }
+
+  }catch(e){}
+
+
+  /* =========================================================
+     ACTUALIZACIÓN AUTOMÁTICA
+     ========================================================= */
 
   function scheduleNext(){
-    clearTimeout(pollTimer);
-    clearInterval(countdownTimer);
-    const ms = 10 * 60 * 1000;
-    nextRunAt = Date.now()+ms;
-    pollTimer = setTimeout(() => { fetchObservations(); }, ms);
-    countdownTimer = setInterval(updateCountdown, 1000);
+
+    clearTimeout(
+      pollTimer
+    );
+
+    clearInterval(
+      countdownTimer
+    );
+
+
+    const ms =
+      10 * 60 * 1000;
+
+
+    nextRunAt =
+      Date.now() + ms;
+
+
+    pollTimer =
+      setTimeout(
+        () => {
+          fetchObservations();
+        },
+        ms
+      );
+
+
+    countdownTimer =
+      setInterval(
+        updateCountdown,
+        1000
+      );
+
   }
+
+
   function updateCountdown(){
-    const remaining = Math.max(0, Math.round((nextRunAt-Date.now())/1000));
-    const m = Math.floor(remaining/60), s = remaining%60;
-    document.getElementById('nextUpdate').textContent = 'Prox: ' + m + ':' + (s<10?'0':'')+s;
+
+    const remaining =
+      Math.max(
+        0,
+        Math.round(
+          (
+            nextRunAt -
+            Date.now()
+          ) / 1000
+        )
+      );
+
+
+    const m =
+      Math.floor(
+        remaining / 60
+      );
+
+
+    const s =
+      remaining % 60;
+
+
+    document.getElementById(
+      'nextUpdate'
+    ).textContent =
+      'Próxima actualización: ' +
+      m +
+      ':' +
+      (
+        s < 10
+          ? '0'
+          : ''
+      ) +
+      s;
+
   }
+
+
+  /* =========================================================
+     RENDERIZAR DATOS
+     ========================================================= */
 
   function renderCurrentData(){
-    let dataToRender = lastObservations;
-    if(state.hideSeen && state.lifeList.length > 0){
-      dataToRender = lastObservations.filter(obs => !obs._inLifeList);
+
+    let dataToRender =
+      lastObservations;
+
+
+    if(
+      state.hideSeen &&
+      state.lifeList.length > 0
+    ){
+
+      dataToRender =
+        lastObservations.filter(
+          obs =>
+            !obs._inLifeList
+        );
+
     }
-    renderMapMarkers(dataToRender);
-    renderFeed(dataToRender);
+
+
+    renderMapMarkers(
+      dataToRender
+    );
+
+
+    renderFeed(
+      dataToRender
+    );
+
   }
+
+
+  /* =========================================================
+     MARCADORES DEL MAPA
+     ========================================================= */
 
   function renderMapMarkers(data){
-    if(!markerLayer) return;
+
+    if(!markerLayer)
+      return;
+
+
     markerLayer.clearLayers();
-    if(!data.length) return;
+
+
+    if(!data.length)
+      return;
+
+
     const bounds = [];
-    data.forEach(obs => {
-      if(typeof obs.lat !== 'number' || typeof obs.lng !== 'number') return;
-      const color = obs._unconfirmed ? '#B8860B' : (obs._inLifeList===false && state.lifeList.length ? '#C94A3D' : '#1F6F64');
-      const marker = L.circleMarker([obs.lat,obs.lng], { radius: 6, color: color, fillColor: color, fillOpacity: 0.9, weight: 1 });
-      marker.bindPopup(popupHtml(obs));
-      marker.addTo(markerLayer);
-      bounds.push([obs.lat,obs.lng]);
-    });
-    if(bounds.length) map.fitBounds(bounds, {padding:[20,20], maxZoom:11});
+
+
+    data.forEach(
+      obs => {
+
+        if(
+          typeof obs.lat !== 'number' ||
+          typeof obs.lng !== 'number'
+        ){
+
+          return;
+
+        }
+
+
+        const color =
+          obs._unconfirmed
+            ? '#B8860B'
+            : (
+                obs._inLifeList === false &&
+                state.lifeList.length
+                  ? '#C94A3D'
+                  : '#1F6F64'
+              );
+
+
+        const marker =
+          L.circleMarker(
+            [
+              obs.lat,
+              obs.lng
+            ],
+            {
+              radius:6,
+              color:color,
+              fillColor:color,
+              fillOpacity:0.9,
+              weight:1
+            }
+          );
+
+
+        marker.bindPopup(
+          popupHtml(obs)
+        );
+
+
+        marker.addTo(
+          markerLayer
+        );
+
+
+        bounds.push([
+          obs.lat,
+          obs.lng
+        ]);
+
+      }
+    );
+
+
+    if(bounds.length){
+
+      map.fitBounds(
+        bounds,
+        {
+          padding:[20,20],
+          maxZoom:11
+        }
+      );
+
+    }
+
   }
+
+
+  /* =========================================================
+     POPUP DEL MAPA
+     ========================================================= */
 
   function popupHtml(obs){
-    const observer = escapeHtml(obs.userDisplayName || (obs.firstName ? obs.firstName + ' ' + obs.lastName : 'Ebirder'));
-    const thumbHtml = obs._imageUrl ? '<div style="margin-bottom:6px;text-align:center;"><img src="'+obs._imageUrl+'" style="max-height:100px;max-width:100%;border-radius:4px;object-fit:cover;"></div>' : '';
-    return '<div style="font-size:13px;color:#16231F;">'+thumbHtml+'<b>'+escapeHtml(primaryName(obs))+'</b><br>'+
-      '<span style="font-style:italic;color:#5B6A5D;">'+escapeHtml(secondaryLine(obs))+'</span><br>'+
-      '📍 '+escapeHtml(obs.locName)+'<br>👤 '+observer+'</div>'+
-      '<a href="'+whatsappLink(obs)+'" target="_blank" rel="noopener" style="display:block;margin-top:6px;background:#1F6F64;color:#fff;text-align:center;padding:4px;border-radius:3px;text-decoration:none;font-weight:700;font-size:11px;">WhatsApp</a>';
+
+    const observer =
+      escapeHtml(
+        obs.userDisplayName ||
+        (
+          obs.firstName
+            ? obs.firstName +
+              ' ' +
+              obs.lastName
+            : 'Observador eBird'
+        )
+      );
+
+
+    const thumbHtml =
+      obs._imageUrl
+
+        ? `
+          <div style="margin-bottom:8px;text-align:center;">
+            <img
+              src="${escapeHtml(obs._imageUrl)}"
+              alt="${escapeHtml(primaryName(obs))}"
+              style="
+                width:180px;
+                max-width:100%;
+                height:120px;
+                border-radius:5px;
+                object-fit:cover;
+                display:block;
+                margin:auto;
+              "
+              loading="lazy"
+              onerror="this.style.display='none';"
+            >
+
+            ${
+              obs._imageSource
+                ? `
+                  <div style="
+                    font-size:9px;
+                    color:#5B6A5D;
+                    margin-top:3px;
+                  ">
+                    Foto: ${escapeHtml(obs._imageSource)}
+                  </div>
+                `
+                : ''
+            }
+          </div>
+        `
+
+        : '';
+
+
+    return `
+      <div style="
+        font-size:13px;
+        color:#16231F;
+        min-width:190px;
+      ">
+
+        ${thumbHtml}
+
+        <b>
+          ${escapeHtml(primaryName(obs))}
+        </b>
+
+        <br>
+
+        <span style="
+          font-style:italic;
+          color:#5B6A5D;
+        ">
+          ${escapeHtml(secondaryLine(obs))}
+        </span>
+
+        <br>
+
+        📍 ${escapeHtml(obs.locName)}
+
+        <br>
+
+        👤 ${observer}
+
+      </div>
+
+      <a
+        href="${whatsappLink(obs)}"
+        target="_blank"
+        rel="noopener"
+        style="
+          display:block;
+          margin-top:8px;
+          background:#1F6F64;
+          color:#fff;
+          text-align:center;
+          padding:5px;
+          border-radius:3px;
+          text-decoration:none;
+          font-weight:700;
+          font-size:11px;
+        "
+      >
+        Compartir por WhatsApp
+      </a>
+    `;
+
   }
+
+
+  /* =========================================================
+     FEED
+     ========================================================= */
 
   function renderFeed(data){
-    const feed = document.getElementById('feed');
-    if(!data.length){ feed.innerHTML = '<div class="empty-state">No hay registros con estos filtros.</div>'; return; }
-    feed.innerHTML = data.map(cardHtml).join('');
+
+    const feed =
+      document.getElementById(
+        'feed'
+      );
+
+
+    if(!data.length){
+
+      feed.innerHTML =
+        '<div class="empty-state">' +
+        'No hay registros con estos filtros.' +
+        '</div>';
+
+      return;
+
+    }
+
+
+    feed.innerHTML =
+      data
+        .map(cardHtml)
+        .join('');
+
   }
+
+
+  /* =========================================================
+     TARJETA DEL AVISTAMIENTO
+     ========================================================= */
 
   function cardHtml(obs){
-    const classes = 'card' + (state.mode==='notable' ? ' notable' : '') + (obs._unconfirmed ? ' unconfirmed' : '');
-    const newBadge = obs._isNew ? '<span class="badge new">Nuevo</span>' : '';
-    const lifeBadge = (state.lifeList.length && !obs._inLifeList) ? '<span class="badge new">¡Falta!</span>' : '';
-    const unconfirmedBadge = obs._unconfirmed ? '<span class="badge unconfirmed">Revisión</span>' : '';
-    const observer = escapeHtml(obs.userDisplayName || (obs.firstName ? obs.firstName + ' ' + obs.lastName : 'Ebirder'));
-    const commentText = obs.comments || obs.subIDComments || '';
-    const commentsHtml = commentText ? '<div class="card-comment">💬 "'+escapeHtml(commentText)+'"</div>' : '';
-    
-    const thumbDiv = obs._imageUrl ? '<div class="card-thumb"><img src="'+obs._imageUrl+'" alt="Foto"></div>' : '<div class="card-thumb empty"></div>';
 
-    return '<div class="'+classes+'">'+
-      '<div class="card-top">'+
-        thumbDiv+
-        '<div class="card-info">'+
-          '<p class="card-title">'+escapeHtml(primaryName(obs))+' '+newBadge+' '+lifeBadge+' '+unconfirmedBadge+'</p>'+
-          '<p class="card-sci">'+escapeHtml(secondaryLine(obs))+'</p>'+
-          '<div class="card-meta">📍 '+escapeHtml(obs.locName)+'<br>🕒 '+formatDate(obs.obsDt)+(obs.howMany ? ' · '+obs.howMany+' ind.' : '')+'<br>👤 '+observer+'</div>'+
-        '</div>'+
-      '</div>'+
-      commentsHtml+
-      '<div class="card-actions">'+
-        '<a class="wa" href="'+whatsappLink(obs)+'" target="_blank" rel="noopener">WhatsApp</a>'+
-        '<a href="https://www.google.com/maps?q='+obs.lat+','+obs.lng+'" target="_blank" rel="noopener">Mapa</a>'+
-        '<a href="https://ebird.org/checklist/'+obs.subId+'" target="_blank" rel="noopener">eBird</a>'+
-      '</div>'+
-    '</div>';
+    const classes =
+      'card' +
+      (
+        state.mode === 'notable'
+          ? ' notable'
+          : ''
+      ) +
+      (
+        obs._unconfirmed
+          ? ' unconfirmed'
+          : ''
+      );
+
+
+    const newBadge =
+      obs._isNew
+        ? '<span class="badge new">Nuevo</span>'
+        : '';
+
+
+    const lifeBadge =
+      (
+        state.lifeList.length &&
+        !obs._inLifeList
+      )
+        ? '<span class="badge new">¡Falta!</span>'
+        : '';
+
+
+    const unconfirmedBadge =
+      obs._unconfirmed
+        ? '<span class="badge unconfirmed">En revisión</span>'
+        : '';
+
+
+    const observer =
+      escapeHtml(
+        obs.userDisplayName ||
+        (
+          obs.firstName
+            ? obs.firstName +
+              ' ' +
+              obs.lastName
+            : 'Observador eBird'
+        )
+      );
+
+
+    const commentText =
+      obs.comments ||
+      obs.subIDComments ||
+      '';
+
+
+    const commentsHtml =
+      commentText
+
+        ? `
+          <div class="card-comment">
+            💬 "${escapeHtml(commentText)}"
+          </div>
+        `
+
+        : '';
+
+
+    /*
+     * FOTO
+     */
+
+    const thumbDiv =
+      obs._imageUrl
+
+        ? `
+          <div>
+
+            <div class="card-thumb">
+
+              <img
+                src="${escapeHtml(obs._imageUrl)}"
+                alt="${escapeHtml(obs.comName || obs.sciName)}"
+                loading="lazy"
+                onerror="
+                  this.parentElement.classList.add('empty');
+                  this.remove();
+                "
+              >
+
+            </div>
+
+            ${
+              obs._imageSource
+                ? `
+                  <div class="photo-source">
+                    Foto: ${escapeHtml(obs._imageSource)}
+                  </div>
+                `
+                : ''
+            }
+
+          </div>
+        `
+
+        : `
+          <div class="card-thumb empty"></div>
+        `;
+
+
+    return `
+
+      <div class="${classes}">
+
+        <div class="card-top">
+
+          ${thumbDiv}
+
+          <div class="card-info">
+
+            <p class="card-title">
+
+              ${escapeHtml(primaryName(obs))}
+
+              ${newBadge}
+
+              ${lifeBadge}
+
+              ${unconfirmedBadge}
+
+            </p>
+
+
+            <p class="card-sci">
+
+              ${escapeHtml(secondaryLine(obs))}
+
+            </p>
+
+
+            <div class="card-meta">
+
+              📍 ${escapeHtml(obs.locName)}
+
+              <br>
+
+              🕒 ${formatDate(obs.obsDt)}
+
+              ${
+                obs.howMany
+                  ? ' · ' +
+                    obs.howMany +
+                    ' ejemplar(es)'
+                  : ''
+              }
+
+              <br>
+
+              👤 ${observer}
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+        ${commentsHtml}
+
+
+        <div class="card-actions">
+
+          <a
+            class="wa"
+            href="${whatsappLink(obs)}"
+            target="_blank"
+            rel="noopener"
+          >
+            WhatsApp
+          </a>
+
+
+          <a
+            href="https://www.google.com/maps?q=${obs.lat},${obs.lng}"
+            target="_blank"
+            rel="noopener"
+          >
+            Mapa
+          </a>
+
+
+          <a
+            href="https://ebird.org/checklist/${obs.subId}"
+            target="_blank"
+            rel="noopener"
+          >
+            eBird
+          </a>
+
+        </div>
+
+      </div>
+
+    `;
+
   }
+
+
+  /* =========================================================
+     WHATSAPP
+     ========================================================= */
 
   function whatsappLink(obs){
-    const nameLine = (state.nameLocale === 'sci') ? primaryName(obs) : (primaryName(obs)+' ('+obs.sciName+')');
-    const observer = obs.userDisplayName || (obs.firstName ? obs.firstName + ' ' + obs.lastName : 'Ebirder');
-    const commentText = obs.comments || obs.subIDComments || '';
-    const msg = '🐦 '+nameLine+'\n'+
-      (obs._unconfirmed ? '⚠️ Rareza en revisión\n' : '')+
-      '📍 '+obs.locName+'\n'+
-      '🕒 '+formatDate(obs.obsDt)+
-      (obs.howMany ? '\n🔢 '+obs.howMany+' ejemplar(es)' : '')+
-      '\n👤 '+observer+
-      (commentText ? '\n💬 "'+commentText+'"' : '')+
-      '\n🗺️ https://www.google.com/maps?q='+obs.lat+','+obs.lng+
-      '\n📋 https://ebird.org/checklist/'+obs.subId;
-    return state.friendPhone ? 'https://wa.me/'+state.friendPhone+'?text='+encodeURIComponent(msg) : 'https://wa.me/?text='+encodeURIComponent(msg);
+
+    const nameLine =
+      state.nameLocale === 'sci'
+        ? primaryName(obs)
+        : (
+            primaryName(obs) +
+            ' (' +
+            obs.sciName +
+            ')'
+          );
+
+
+    const observer =
+      obs.userDisplayName ||
+      (
+        obs.firstName
+          ? obs.firstName +
+            ' ' +
+            obs.lastName
+          : 'Observador eBird'
+      );
+
+
+    const commentText =
+      obs.comments ||
+      obs.subIDComments ||
+      '';
+
+
+    const msg =
+      '🐦 ' +
+      nameLine +
+      '\n' +
+
+      (
+        obs._unconfirmed
+          ? '⚠️ Registro en revisión\n'
+          : ''
+      ) +
+
+      '📍 ' +
+      obs.locName +
+      '\n' +
+
+      '🕒 ' +
+      formatDate(obs.obsDt) +
+
+      (
+        obs.howMany
+          ? '\n🔢 ' +
+            obs.howMany +
+            ' ejemplar(es)'
+          : ''
+      ) +
+
+      '\n👤 ' +
+      observer +
+
+      (
+        commentText
+          ? '\n💬 "' +
+            commentText +
+            '"'
+          : ''
+      ) +
+
+      '\n🗺️ https://www.google.com/maps?q=' +
+      obs.lat +
+      ',' +
+      obs.lng +
+
+      '\n📋 https://ebird.org/checklist/' +
+      obs.subId;
+
+
+    return state.friendPhone
+
+      ? 'https://wa.me/' +
+        state.friendPhone +
+        '?text=' +
+        encodeURIComponent(msg)
+
+      : 'https://wa.me/?text=' +
+        encodeURIComponent(msg);
+
   }
+
+
+  /* =========================================================
+     FECHA
+     ========================================================= */
 
   function formatDate(d){
-    const dt = new Date(d.replace(' ','T'));
-    if(isNaN(dt.getTime())) return d;
-    return dt.toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'});
+
+    const dt =
+      new Date(
+        d.replace(
+          ' ',
+          'T'
+        )
+      );
+
+
+    if(
+      isNaN(
+        dt.getTime()
+      )
+    ){
+
+      return d;
+
+    }
+
+
+    return dt.toLocaleTimeString(
+      'es-CL',
+      {
+        hour:'2-digit',
+        minute:'2-digit'
+      }
+    );
+
   }
 
-  function primaryName(obs){ return state.nameLocale === 'sci' ? obs.sciName : obs.comName; }
-  function secondaryLine(obs){ return state.nameLocale === 'sci' ? obs.comName : obs.sciName; }
-  function escapeHtml(s){ return (s==null?'':String(s)).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-  document.getElementById('tabFeed').addEventListener('click', () => {
-    document.getElementById('tabFeed').classList.add('active');
-    document.getElementById('tabMapToggle').classList.remove('active');
-    document.querySelector('.sidebar').style.display = 'flex';
-    document.getElementById('map-container').style.display = 'none';
-  });
-  document.getElementById('tabMapToggle').addEventListener('click', () => {
-    document.getElementById('tabMapToggle').classList.add('active');
-    document.getElementById('tabFeed').classList.remove('active');
-    if(window.innerWidth <= 850){
-      document.querySelector('.sidebar').style.display = 'none';
-      document.getElementById('map-container').style.display = 'block';
-    }
-    if(map) map.invalidateSize();
-  });
+  /* =========================================================
+     NOMBRES
+     ========================================================= */
 
-  document.getElementById('btnRefresh').addEventListener('click', () => { fetchObservations(); });
-  document.getElementById('btnSave').addEventListener('click', () => {
-    readForm();
-    fetchObservations();
-  });
+  function primaryName(obs){
+
+    return state.nameLocale === 'sci'
+      ? obs.sciName
+      : obs.comName;
+
+  }
+
+
+  function secondaryLine(obs){
+
+    return state.nameLocale === 'sci'
+      ? obs.comName
+      : obs.sciName;
+
+  }
+
+
+  /* =========================================================
+     SEGURIDAD HTML
+     ========================================================= */
+
+  function escapeHtml(s){
+
+    return (
+      s == null
+        ? ''
+        : String(s)
+    )
+    .replace(
+      /[&<>"']/g,
+      c =>
+        ({
+          '&':'&amp;',
+          '<':'&lt;',
+          '>':'&gt;',
+          '"':'&quot;',
+          "'":'&#39;'
+        }[c])
+    );
+
+  }
+
+
+  /* =========================================================
+     PESTAÑAS LISTA / MAPA
+     ========================================================= */
+
+  document
+    .getElementById('tabFeed')
+    .addEventListener(
+      'click',
+      () => {
+
+        document
+          .getElementById('tabFeed')
+          .classList.add('active');
+
+
+        document
+          .getElementById('tabMapToggle')
+          .classList.remove('active');
+
+
+        document
+          .querySelector('.sidebar')
+          .style.display = 'flex';
+
+
+        document
+          .getElementById('map-container')
+          .style.display = 'none';
+
+      }
+    );
+
+
+  document
+    .getElementById('tabMapToggle')
+    .addEventListener(
+      'click',
+      () => {
+
+        document
+          .getElementById('tabMapToggle')
+          .classList.add('active');
+
+
+        document
+          .getElementById('tabFeed')
+          .classList.remove('active');
+
+
+        if(window.innerWidth <= 850){
+
+          document
+            .querySelector('.sidebar')
+            .style.display = 'none';
+
+
+          document
+            .getElementById('map-container')
+            .style.display = 'block';
+
+        }
+
+
+        if(map){
+
+          map.invalidateSize();
+
+        }
+
+      }
+    );
+
+
+  /* =========================================================
+     BOTÓN ACTUALIZAR
+     ========================================================= */
+
+  document
+    .getElementById('btnRefresh')
+    .addEventListener(
+      'click',
+      () => {
+
+        fetchObservations();
+
+      }
+    );
+
+
+  /* =========================================================
+     BOTÓN APLICAR
+     ========================================================= */
+
+  document
+    .getElementById('btnSave')
+    .addEventListener(
+      'click',
+      () => {
+
+        readForm();
+
+        fetchObservations();
+
+      }
+    );
+
+
+  /* =========================================================
+     VISTA INICIAL EN MÓVIL
+     ========================================================= */
 
   if(window.innerWidth <= 850){
-    document.getElementById('map-container').style.display = 'none';
+
+    document
+      .getElementById('map-container')
+      .style.display = 'none';
+
   }
+
 </script>
+
 </body>
 </html>
