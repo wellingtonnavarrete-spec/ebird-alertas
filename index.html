@@ -295,7 +295,6 @@
   var EMBEDDED_API_KEY = '89f4bf7f-47ac-4e68-949f-de69c890bce7';
   var currentUser = null;
   
-  // Carga instantánea de estado desde caché local si existe
   var cachedState = localStorage.getItem('ebird_fast_state');
   var state = cachedState ? JSON.parse(cachedState) : {
     apiKey: EMBEDDED_API_KEY, region:'CL', mode:'notable', backDays:2, interval:10,
@@ -306,7 +305,6 @@
   var pollTimer = null, countdownTimer = null, nextRunAt = null;
   var lastObservations = [];
 
-  // Auth logic optimizada
   var isRegistering = false;
   document.getElementById('authSwitchMode').addEventListener('click', function(){
     isRegistering = !isRegistering;
@@ -342,13 +340,11 @@
       document.getElementById('appContainer').style.display = 'flex';
       document.getElementById('userEmailSpan').textContent = user.email;
       
-      // Renderizar UI de inmediato con lo que haya
       fillForm();
       renderLifeStatus();
       initMap();
       fetchObservations(false);
 
-      // Sincronizar datos de Firestore en segundo plano (sin bloquear)
       db.collection('users').doc(currentUser.uid).get().then(function(doc){
         if(doc.exists){
           var data = doc.data();
@@ -625,7 +621,6 @@
   function secondaryLine(obs){ return state.nameLocale === 'sci' ? obs.comName : obs.sciName; }
   function escapeHtml(s){ return (s==null?'':String(s)).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 
-  // Tabs móvil / responsive toggle
   var activeTab = 'feed';
   document.getElementById('tabFeed').addEventListener('click', function(){
     activeTab = 'feed';
