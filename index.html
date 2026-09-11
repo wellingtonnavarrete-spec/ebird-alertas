@@ -109,6 +109,7 @@
   
   .card-top{display:flex;gap:10px;align-items:flex-start;}
   .card-thumb{width:50px;height:50px;border-radius:4px;background:#111614;flex:none;overflow:hidden;border:1px solid var(--border);}
+  .card-thumb img{width:100%;height:100%;object-fit:cover;}
   .card-thumb.empty::after{content:'\1F426';display:flex;align-items:center;justify-content:center;height:100%;font-size:20px;opacity:0.3;}
   
   .card-info{flex:1;min-width:0;}
@@ -490,6 +491,13 @@
       obs._isNew = !seenSet[obs.subId];
       obs._inLifeList = isInLifeList(obs);
       obs._unconfirmed = (obs.obsValid === false);
+      
+      // Extraer foto multimedia si eBird la provee en el detalle
+      obs._imageUrl = '';
+      if(obs.media && obs.media.length > 0){
+        const photo = obs.media.find(m => m.mediaType === 'photo' || m.url);
+        if(photo && photo.url) obs._imageUrl = photo.url;
+      }
     });
     data.sort((a,b) => new Date(b.obsDt) - new Date(a.obsDt));
     data.forEach(obs => { seenSet[obs.subId]=true; });
@@ -541,7 +549,8 @@
 
   function popupHtml(obs){
     const observer = escapeHtml(obs.userDisplayName || (obs.firstName ? obs.firstName + ' ' + obs.lastName : 'Ebirder'));
-    return '<div style="font-size:13px;color:#111;"><b>'+escapeHtml(primaryName(obs))+'</b><br>'+
+    const thumbHtml = obs._imageUrl ? '<div style="margin-bottom:6px;text-align:center;"><img src="'+obs._imageUrl+'" style="max-height:100px;max-width:100%;border-radius:4px;object-fit:cover;"></div>' : '';
+    return '<div style="font-size:13px;color:#111;">'+thumbHtml+'<b>'+escapeHtml(primaryName(obs))+'</b><br>'+
       '<span style="font-style:italic;color:#555;">'+escapeHtml(secondaryLine(obs))+'</span><br>'+
       '📍 '+escapeHtml(obs.locName)+'<br>👤 '+observer+'</div>'+
       '<a href="'+whatsappLink(obs)+'" target="_blank" rel="noopener" style="display:block;margin-top:6px;background:#064E3B;color:#6EE7B7;text-align:center;padding:4px;border-radius:3px;text-decoration:none;font-weight:700;font-size:11px;">WhatsApp</a>';
@@ -561,10 +570,12 @@
     const observer = escapeHtml(obs.userDisplayName || (obs.firstName ? obs.firstName + ' ' + obs.lastName : 'Ebirder'));
     const commentText = obs.comments || obs.subIDComments || '';
     const commentsHtml = commentText ? '<div class="card-comment">💬 "'+escapeHtml(commentText)+'"</div>' : '';
+    
+    const thumbDiv = obs._imageUrl ? '<div class="card-thumb"><img src="'+obs._imageUrl+'" alt="Foto"></div>' : '<div class="card-thumb empty"></div>';
 
     return '<div class="'+classes+'">'+
       '<div class="card-top">'+
-        '<div class="card-thumb empty"></div>'+
+        thumbDiv+
         '<div class="card-info">'+
           '<p class="card-title">'+escapeHtml(primaryName(obs))+' '+newBadge+' '+lifeBadge+' '+unconfirmedBadge+'</p>'+
           '<p class="card-sci">'+escapeHtml(secondaryLine(obs))+'</p>'+
