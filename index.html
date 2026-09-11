@@ -113,6 +113,18 @@
     border-radius:3px;padding:14px 16px;display:flex;justify-content:space-between;gap:16px;
     flex-wrap:wrap;
   }
+  .card .photo-wrap{
+    width:88px;height:88px;flex:none;border-radius:4px;overflow:hidden;
+    background:var(--paper);border:1px solid var(--line);
+  }
+  .card .photo-wrap img{width:100%;height:100%;object-fit:cover;display:block;}
+  .card .photo-wrap.empty::after{
+    content:'🐦';display:flex;align-items:center;justify-content:center;
+    width:100%;height:100%;font-size:28px;opacity:0.35;
+  }
+  .card-left{display:flex;gap:12px;flex:1;min-width:220px;}
+  .photo{width:56px;height:56px;border-radius:4px;object-fit:cover;flex:none;background:var(--paper);border:1px solid var(--line);}
+  .photo-ph{width:56px;height:56px;border-radius:4px;flex:none;background:var(--paper);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--muted);}
   .card.notable{border-left-color:var(--flame);}
   .card.is-new{box-shadow:0 0 0 1px var(--flame) inset;}
   .card .main{flex:1;min-width:220px;}
@@ -285,6 +297,37 @@
 
   var STORAGE_KEY = 'ebirdAlertasChile_v1';
   var state = loadState();
+  var IMAGE_CACHE_KEY = 'ebirdAlertasChile_images_v1';
+  var imageCache = loadImageCache();
+
+  function loadImageCache(){
+    try{ return JSON.parse(localStorage.getItem(IMAGE_CACHE_KEY)) || {}; }catch(e){ return {}; }
+  }
+  function saveImageCache(){
+    try{ localStorage.setItem(IMAGE_CACHE_KEY, JSON.stringify(imageCache)); }catch(e){}
+  }
+  function fetchSpeciesImage(sciName){
+    if(Object.prototype.hasOwnProperty.call(imageCache, sciName)) return Promise.resolve(imageCache[sciName]);
+    var url = 'https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(sciName.replace(/ /g,'_'));
+    return fetch(url).then(function(res){
+      if(!res.ok) throw new Error('sin página');
+      return res.json();
+    }).then(function(data){
+      var img = (data.thumbnail && data.thumbnail.source) ? data.thumbnail.source : null;
+      imageCache[sciName] = img;
+      return img;
+    }).catch(function(){
+      imageCache[sciName] = null;
+      return null;
+    });
+  }
+  function preloadImages(data){
+    var unique = {};
+    data.forEach(function(o){ if(o.sciName) unique[o.sciName] = true; });
+    var names = Object.keys(unique).filter(function(n){ return !Object.prototype.hasOwnProperty.call(imageCache, n); });
+    if(!names.length) return Promise.resolve();
+    return Promise.all(names.map(function(n){ return fetchSpeciesImage(n); })).then(function(){ saveImageCache(); }).catch(function(){});
+  }
   var map, markerLayer;
   var pollTimer = null, countdownTimer = null, nextRunAt = null;
   var currentView = 'map';
@@ -418,6 +461,56 @@
     renderLifeStatus();
     renderCurrentData();
   });
+
+  // ---------- fotos de especies (Wikipedia) ----------
+  var PHOTO_CACHE_KEY = 'ebirdAlertasChile_photoCache_v1';
+  var photoCache = {};
+  try{ photoCache = JSON.parse(localStorage.getItem(PHOTO_CACHE_KEY)) || {}; }catch(e){ photoCache = {}; }
+
+  function savePhotoCache(){
+    var keys = Object.keys(photoCache);
+    if(keys.length > 400){
+      var trimmed = {};
+      keys.slice(-300).forEach(function(k){ trimmed[k]=photoCache[k]; });
+      photoCache = trimmed;
+    }
+    try{ localStorage.setItem(PHOTO_CACHE_KEY, JSON.stringify(photoCache)); }catch(e){}
+  }
+
+  function fetchWikiThumb(title){
+    return fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title))
+      .then(function(res){ if(!res.ok) throw new Error('sin resultado'); return res.json(); })
+      .then(function(data){ return (data.thumbnail && data.thumbnail.source) ? data.thumbnail.source : null; });
+  }
+
+  function getSpeciesPhoto(comName, sciName, cb){
+    var key = sciName || comName;
+    if(!key) { cb(null); return; }
+    if(photoCache.hasOwnProperty(key)){ cb(photoCache[key]); return; }
+    fetchWikiThumb(comName)
+      .then(function(url){ photoCache[key]=url; savePhotoCache(); cb(url); })
+      .catch(function(){
+        fetchWikiThumb(sciName)
+          .then(function(url){ photoCache[key]=url; savePhotoCache(); cb(url); })
+          .catch(function(){ photoCache[key]=null; savePhotoCache(); cb(null); });
+      });
+  }
+
+  function loadCardPhotos(data){
+    data.forEach(function(obs){
+      var id = 'photo-' + safeId(obs.subId + obs.speciesCode);
+      var wrap = document.getElementById(id);
+      if(!wrap) return;
+      getSpeciesPhoto(obs.comName, obs.sciName, function(url){
+        var el = document.getElementById(id);
+        if(!el) return;
+        if(url){ el.innerHTML = '<img src="'+url+'" alt="'+escapeHtml(obs.comName)+'" loading="lazy">'; el.classList.remove('empty'); }
+        else { el.classList.add('empty'); }
+      });
+    });
+  }
+
+  function safeId(s){ return String(s).replace(/[^a-zA-Z0-9_-]/g,''); }
 
   // ---------- map ----------
   function initMap(){
@@ -557,6 +650,12 @@
         radius: 7, color: color, fillColor: color, fillOpacity: 0.85, weight: 1.5
       });
       marker.bindPopup(popupHtml(obs));
+      marker.on('popupopen', function(){
+        getSpeciesPhoto(obs.comName, obs.sciName, function(url){
+          var el = document.getElementById('popup-photo-' + safeId(obs.subId + obs.speciesCode));
+          if(el && url) el.innerHTML = '<img src="'+url+'" alt="" style="width:100%;height:100%;object-fit:cover;">';
+        });
+      });
       marker.addTo(markerLayer);
       bounds.push([obs.lat,obs.lng]);
     });
@@ -566,8 +665,14 @@
   function popupHtml(obs){
     var newBadge = obs._isNew ? ' <span class="badge new">Nuevo</span>' : '';
     var lifeBadge = (state.lifeList.length && !obs._inLifeList) ? ' <span class="badge notable">Nuevo para ti</span>' : '';
-    return '<div style="font-family:Georgia,serif;font-size:14px;margin-bottom:2px;">'+escapeHtml(obs.comName)+newBadge+lifeBadge+'</div>'+
-      '<div style="font-size:12px;color:#5B6A5D;font-style:italic;">'+escapeHtml(obs.sciName)+'</div>'+
+    var photoId = 'popup-photo-' + safeId(obs.subId + obs.speciesCode);
+    return '<div style="display:flex;gap:8px;">'+
+      '<div id="'+photoId+'" style="width:56px;height:56px;flex:none;border-radius:4px;overflow:hidden;background:#E9ECE4;border:1px solid #C9CBB8;"></div>'+
+      '<div>'+
+        '<div style="font-family:Georgia,serif;font-size:14px;margin-bottom:2px;">'+escapeHtml(obs.comName)+newBadge+lifeBadge+'</div>'+
+        '<div style="font-size:12px;color:#5B6A5D;font-style:italic;">'+escapeHtml(obs.sciName)+'</div>'+
+      '</div>'+
+    '</div>'+
       '<div style="font-size:12.5px;margin-top:6px;">'+escapeHtml(obs.locName)+'<br>'+formatDate(obs.obsDt)+'</div>'+
       '<a href="'+whatsappLink(obs)+'" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;background:#1F6F64;color:#fff;padding:5px 10px;border-radius:3px;text-decoration:none;font-size:12px;">Enviar por WhatsApp</a>';
   }
@@ -579,6 +684,7 @@
       return;
     }
     feed.innerHTML = data.map(cardHtml).join('');
+    loadCardPhotos(data);
   }
 
   function cardHtml(obs){
@@ -588,7 +694,9 @@
     var distTxt = (typeof obs._dist === 'number') ? (' · ' + obs._dist.toFixed(1) + ' km de tu punto') : '';
     var mapUrl = 'https://www.google.com/maps?q='+obs.lat+','+obs.lng;
     var checklistUrl = 'https://ebird.org/checklist/'+obs.subId;
+    var photoId = 'photo-' + safeId(obs.subId + obs.speciesCode);
     return '<div class="'+classes+'">'+
+      '<div class="photo-wrap empty" id="'+photoId+'"></div>'+
       '<div class="main">'+
         '<p class="common">'+escapeHtml(obs.comName)+' '+newBadge+' '+lifeBadge+'</p>'+
         '<p class="sci">'+escapeHtml(obs.sciName)+'</p>'+
