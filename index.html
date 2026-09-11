@@ -280,7 +280,7 @@
     </select>
 
     <input type="file" id="lifeListFile" accept=".csv" style="margin-top:10px;">
-    <div class="hint">Sube tu archivo CSV (Life List o "Mis datos de eBird"). La app leerá la columna State/Province de ese archivo para saber dónde has visto cada especie.</div>
+    <div class="hint">Sube tu archivo CSV. La app leerá automáticamente la columna S/P para cruzar las regiones.</div>
     <div class="life-status" id="lifeStatus">Ninguna lista cargada todavía.</div>
     
     <div class="toggle-row">
@@ -335,7 +335,7 @@
   // ==========================================================
   var EMBEDDED_API_KEY = '89f4bf7f-47ac-4e68-949f-de69c890bce7';
 
-  var STORAGE_KEY = 'ebirdAlertasChile_v5'; 
+  var STORAGE_KEY = 'ebirdAlertasChile_v5'; // Actualizado para resetear con la nueva lógica
   var state = loadState();
   var IMAGE_CACHE_KEY = 'ebirdAlertasChile_images_v1';
   var imageCache = loadImageCache();
@@ -375,7 +375,7 @@
       lifeList:[], lifeListUploadedAt:null, seenSubIds:[],
       nameLocale:'es-CL', includeProvisional:false,
       hideSeen:false,
-      lifeListRegion:'ALL' // <- Nuevo estado de región
+      lifeListRegion:'ALL'
     };
     if(!raw) return def;
     try{ return Object.assign(def, JSON.parse(raw)); }catch(e){ return def; }
@@ -448,8 +448,8 @@
     var sciIdx = headers.findIndex(function(h){return h.indexOf('scientific')>-1;});
     var comIdx = headers.findIndex(function(h){return h.indexOf('common name')>-1 || h==='species';});
     
-    // Identificar las columnas de ubicación de eBird
-    var stateIdx = headers.findIndex(function(h){return h.indexOf('state/province')>-1 || h==='state';});
+    // Identificar las columnas de ubicación (incluyendo s/p)
+    var stateIdx = headers.findIndex(function(h){return h.indexOf('state/province')>-1 || h==='state' || h==='s/p';});
     var countryIdx = headers.findIndex(function(h){return h.indexOf('country')>-1;});
 
     var seen = {};
@@ -467,7 +467,7 @@
         seen[key] = {sci: sci, common: normalizeText(com), regions: {}};
       }
       
-      // Guardamos en qué regiones específicas se ha visto esta especie
+      // Guardamos en qué regiones se ha visto esta especie
       if(st) seen[key].regions[st] = true;
       if(co) seen[key].regions[co] = true;
     }
@@ -492,7 +492,6 @@
     return (t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
   }
   
-  // Lógica de cruce regional
   function isInLifeList(obs){
     if(!state.lifeList.length) return false;
     var sci = (obs.sciName||'').toLowerCase();
@@ -503,10 +502,10 @@
       var match = (item.sci && sci && item.sci === sci) || (item.common && com && item.common === com);
       if(!match) return false;
       
-      // Si el filtro es "Mundo", basta con que el ave esté en el CSV
+      // Filtro Mundial
       if(targetRegion === 'ALL') return true;
       
-      // Si el filtro es "Todo Chile", comprobamos si el ave se ha visto en cualquier región CL
+      // Filtro Nacional
       if(targetRegion === 'CL') {
         for(var reg in item.regions){
           if(reg.indexOf('CL') === 0 || reg === 'CHILE') return true;
@@ -514,7 +513,7 @@
         return false;
       }
       
-      // Si el filtro es una región específica (Ej: CL-AR), revisamos si el CSV contiene ese código
+      // Filtro Regional Específico
       return item.regions[targetRegion] === true;
     });
   }
@@ -530,7 +529,6 @@
       saveState();
       renderLifeStatus();
       
-      // Recalcular estado de las observaciones actuales
       lastObservations.forEach(function(obs){ obs._inLifeList = isInLifeList(obs); });
       renderCurrentData();
     };
@@ -552,11 +550,9 @@
     renderCurrentData();
   });
 
-  // Evento para cuando cambias la región objetivo en el menú desplegable
   document.getElementById('lifeListRegion').addEventListener('change', function(e){
     state.lifeListRegion = e.target.value;
     saveState();
-    // Volver a evaluar toda la lista mostrada basándose en la nueva región
     lastObservations.forEach(function(obs){ obs._inLifeList = isInLifeList(obs); });
     renderCurrentData();
   });
@@ -677,7 +673,7 @@
 
     data.forEach(function(obs){
       obs._isNew = !seenSet[obs.subId];
-      obs._inLifeList = isInLifeList(obs); // Cruza con la región seleccionada
+      obs._inLifeList = isInLifeList(obs);
       obs._unconfirmed = (obs.obsValid === false) || (obs.obsReviewed === false);
     });
 
