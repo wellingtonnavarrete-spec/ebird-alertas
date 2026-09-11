@@ -14,6 +14,7 @@
     --teal:#1F6F64;
     --teal-dark:#164F47;
     --flame:#C94A3D;
+    --amber:#B8860B;
     --line:#C9CBB8;
     --muted:#5B6A5D;
     --serif: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
@@ -138,6 +139,11 @@
   }
   .badge.new{background:var(--flame);color:#fff;}
   .badge.notable{background:var(--moss);color:#fff;}
+  .badge.unconfirmed{background:var(--amber);color:#fff;}
+  .card.unconfirmed{border-left-color:var(--amber);}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:11.5px;color:var(--muted);margin:-6px 0 14px 0;}
+  .legend span{display:inline-flex;align-items:center;gap:5px;}
+  .legend i{width:9px;height:9px;border-radius:50%;display:inline-block;}
   .card .actions{display:flex;flex-direction:column;gap:6px;justify-content:center;}
   .card .actions a, .card .actions button{
     font-family:var(--sans);font-size:12.5px;text-align:center;text-decoration:none;
@@ -214,6 +220,12 @@
     </select>
     <div class="hint" id="modeHint">Recomendado para "todo Chile": si eliges "todas las especies" a nivel país, la lista puede ser enorme — mejor usar un código de región más pequeño.</div>
 
+    <div class="toggle-row">
+      <input type="checkbox" id="includeProvisional">
+      <label for="includeProvisional" style="margin:0;">Incluir registros no confirmados / en revisión</label>
+    </div>
+    <div class="hint">Suma reportes de rarezas que un observador cargó pero que los revisores regionales de eBird todavía no validan. Aparecen marcados con la etiqueta "No confirmado" en el mapa, la lista y el mensaje de WhatsApp. Aplica sobre todo con el filtro "Solo especies raras / notables".</div>
+
     <div class="row2">
       <div>
         <label for="backDays">Días hacia atrás</label>
@@ -229,6 +241,16 @@
         </select>
       </div>
     </div>
+
+    <h2>Nombres a mostrar</h2>
+    <label for="nameLocale">Tipo de nombre</label>
+    <select id="nameLocale">
+      <option value="es_CL">Español (Chile)</option>
+      <option value="es">Español (general)</option>
+      <option value="en">Inglés</option>
+      <option value="sci">Solo nombre científico</option>
+    </select>
+    <div class="hint">Al cambiar esto y presionar "Guardar y actualizar", se vuelve a consultar eBird para traer los nombres en esa variante. Cuando eliges "Solo nombre científico", debajo se muestra igual el nombre común como referencia.</div>
 
     <h2>Punto de referencia (opcional)</h2>
     <div class="row2">
@@ -261,6 +283,8 @@
         <li>Elige región y filtro, y presiona "Guardar y actualizar".</li>
         <li>El sitio revisa eBird automáticamente mientras esta pestaña esté abierta.</li>
         <li>Cada avistamiento nuevo trae un botón para mandarlo por WhatsApp con un clic.</li>
+        <li>En "Nombres a mostrar" eliges si prefieres el nombre en español de Chile, español general, inglés, o solo el nombre científico.</li>
+        <li>Si activas "Incluir registros no confirmados", verás también rarezas que todavía no pasan por la revisión regional de eBird, marcadas en color ámbar como "No confirmado".</li>
         <li>Si cierras la pestaña, las revisiones se detienen — no hay envío automático en segundo plano, eso requeriría un servidor aparte.</li>
       </ol>
     </details>
@@ -272,6 +296,12 @@
       <button id="tabMap" class="active">Mapa</button>
       <button id="tabList">Lista</button>
       <button id="btnMarkSeen" class="ghost" style="margin-left:auto;border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:3px;padding:7px 14px;cursor:pointer;">Marcar todo como visto</button>
+    </div>
+
+    <div class="legend">
+      <span><i style="background:#1F6F64;"></i>Confirmado</span>
+      <span><i style="background:#C94A3D;"></i>Nuevo para tu lista vitalicia</span>
+      <span><i style="background:#B8860B;"></i>No confirmado / en revisión</span>
     </div>
 
     <div id="map"></div>
@@ -338,7 +368,8 @@
     var def = {
       apiKey:EMBEDDED_API_KEY, region:'CL', mode:'notable', backDays:2, interval:10,
       homeLat:'', homeLng:'', friendPhone:'', notifEnabled:false,
-      lifeList:[], lifeListUploadedAt:null, seenSubIds:[]
+      lifeList:[], lifeListUploadedAt:null, seenSubIds:[],
+      nameLocale:'es_CL', includeProvisional:false
     };
     if(!raw) return def;
     try{ return Object.assign(def, JSON.parse(raw)); }catch(e){ return def; }
@@ -363,6 +394,8 @@
       document.getElementById('customRegionWrap').style.display = 'block';
     }
     document.getElementById('mode').value = state.mode;
+    document.getElementById('includeProvisional').checked = !!state.includeProvisional;
+    document.getElementById('nameLocale').value = state.nameLocale;
     document.getElementById('backDays').value = state.backDays;
     document.getElementById('interval').value = state.interval;
     document.getElementById('homeLat').value = state.homeLat;
@@ -376,6 +409,8 @@
     state.region = regionSel === '__custom' ?
       (document.getElementById('customRegion').value.trim() || 'CL') : regionSel;
     state.mode = document.getElementById('mode').value;
+    state.includeProvisional = document.getElementById('includeProvisional').checked;
+    state.nameLocale = document.getElementById('nameLocale').value;
     state.backDays = Math.min(14, Math.max(1, parseInt(document.getElementById('backDays').value,10) || 2));
     state.interval = parseInt(document.getElementById('interval').value,10);
     state.homeLat = document.getElementById('homeLat').value.trim();
@@ -528,8 +563,12 @@
   function buildUrl(){
     var base = 'https://api.ebird.org/v2/data/obs/' + encodeURIComponent(state.region) + '/recent';
     if(state.mode === 'notable') base += '/notable';
-    var params = ['back='+state.backDays, 'locale=es', 'key='+encodeURIComponent(state.apiKey)];
+    // el nombre científico no depende de "locale"; para ese modo igual pedimos
+    // el común en español de Chile como referencia secundaria en las tarjetas.
+    var nameLocale = (state.nameLocale === 'sci') ? 'es_CL' : state.nameLocale;
+    var params = ['back='+state.backDays, 'locale='+nameLocale, 'key='+encodeURIComponent(state.apiKey)];
     if(state.mode === 'all') params.push('maxResults=300');
+    if(state.includeProvisional) params.push('includeProvisional=true');
     return base + '?' + params.join('&');
   }
   function proxyUrl(url){
@@ -583,6 +622,8 @@
     data.forEach(function(obs){
       obs._isNew = !seenSet[obs.subId];
       obs._inLifeList = isInLifeList(obs);
+      // eBird marca así los registros que un revisor regional aún no valida
+      obs._unconfirmed = (obs.obsValid === false) || (obs.obsReviewed === false);
     });
 
     var hasHome = state.homeLat && state.homeLng && !isNaN(parseFloat(state.homeLat)) && !isNaN(parseFloat(state.homeLng));
@@ -597,7 +638,7 @@
     var newOnes = data.filter(function(o){ return o._isNew; });
     if(newOnes.length && state.notifEnabled && 'Notification' in window && Notification.permission === 'granted'){
       var first = newOnes[0];
-      new Notification('Nuevo avistamiento: '+first.comName, {
+      new Notification('Nuevo avistamiento: '+primaryName(first), {
         body: first.locName + (newOnes.length>1 ? ' y '+(newOnes.length-1)+' más' : '')
       });
     }
@@ -645,7 +686,8 @@
     var bounds = [];
     data.forEach(function(obs){
       if(typeof obs.lat !== 'number' || typeof obs.lng !== 'number') return;
-      var color = obs._inLifeList===false && state.lifeList.length ? '#C94A3D' : '#1F6F64';
+      var color = obs._unconfirmed ? '#B8860B' :
+        (obs._inLifeList===false && state.lifeList.length ? '#C94A3D' : '#1F6F64');
       var marker = L.circleMarker([obs.lat,obs.lng], {
         radius: 7, color: color, fillColor: color, fillOpacity: 0.85, weight: 1.5
       });
@@ -665,12 +707,13 @@
   function popupHtml(obs){
     var newBadge = obs._isNew ? ' <span class="badge new">Nuevo</span>' : '';
     var lifeBadge = (state.lifeList.length && !obs._inLifeList) ? ' <span class="badge notable">Nuevo para ti</span>' : '';
+    var unconfirmedBadge = obs._unconfirmed ? ' <span class="badge unconfirmed">No confirmado</span>' : '';
     var photoId = 'popup-photo-' + safeId(obs.subId + obs.speciesCode);
     return '<div style="display:flex;gap:8px;">'+
       '<div id="'+photoId+'" style="width:56px;height:56px;flex:none;border-radius:4px;overflow:hidden;background:#E9ECE4;border:1px solid #C9CBB8;"></div>'+
       '<div>'+
-        '<div style="font-family:Georgia,serif;font-size:14px;margin-bottom:2px;">'+escapeHtml(obs.comName)+newBadge+lifeBadge+'</div>'+
-        '<div style="font-size:12px;color:#5B6A5D;font-style:italic;">'+escapeHtml(obs.sciName)+'</div>'+
+        '<div style="font-family:Georgia,serif;font-size:14px;margin-bottom:2px;">'+escapeHtml(primaryName(obs))+newBadge+lifeBadge+unconfirmedBadge+'</div>'+
+        '<div style="font-size:12px;color:#5B6A5D;font-style:italic;">'+escapeHtml(secondaryLine(obs))+'</div>'+
       '</div>'+
     '</div>'+
       '<div style="font-size:12.5px;margin-top:6px;">'+escapeHtml(obs.locName)+'<br>'+formatDate(obs.obsDt)+'</div>'+
@@ -688,9 +731,10 @@
   }
 
   function cardHtml(obs){
-    var classes = 'card' + (state.mode==='notable' ? ' notable' : '') + (obs._isNew ? ' is-new' : '');
+    var classes = 'card' + (state.mode==='notable' ? ' notable' : '') + (obs._isNew ? ' is-new' : '') + (obs._unconfirmed ? ' unconfirmed' : '');
     var newBadge = obs._isNew ? '<span class="badge new">Nuevo</span>' : '';
     var lifeBadge = (state.lifeList.length && !obs._inLifeList) ? '<span class="badge notable">Nuevo para ti</span>' : '';
+    var unconfirmedBadge = obs._unconfirmed ? '<span class="badge unconfirmed">No confirmado</span>' : '';
     var distTxt = (typeof obs._dist === 'number') ? (' · ' + obs._dist.toFixed(1) + ' km de tu punto') : '';
     var mapUrl = 'https://www.google.com/maps?q='+obs.lat+','+obs.lng;
     var checklistUrl = 'https://ebird.org/checklist/'+obs.subId;
@@ -698,8 +742,8 @@
     return '<div class="'+classes+'">'+
       '<div class="photo-wrap empty" id="'+photoId+'"></div>'+
       '<div class="main">'+
-        '<p class="common">'+escapeHtml(obs.comName)+' '+newBadge+' '+lifeBadge+'</p>'+
-        '<p class="sci">'+escapeHtml(obs.sciName)+'</p>'+
+        '<p class="common">'+escapeHtml(primaryName(obs))+' '+newBadge+' '+lifeBadge+' '+unconfirmedBadge+'</p>'+
+        '<p class="sci">'+escapeHtml(secondaryLine(obs))+'</p>'+
         '<div class="meta"><span class="loc">'+escapeHtml(obs.locName)+'</span>'+distTxt+'<br>'+
         formatDate(obs.obsDt)+(obs.howMany ? ' · '+obs.howMany+' ejemplar(es)' : '')+'</div>'+
       '</div>'+
@@ -712,7 +756,9 @@
   }
 
   function whatsappLink(obs){
-    var msg = '🐦 '+obs.comName+' ('+obs.sciName+')\n'+
+    var nameLine = (state.nameLocale === 'sci') ? primaryName(obs) : (primaryName(obs)+' ('+obs.sciName+')');
+    var msg = '🐦 '+nameLine+'\n'+
+      (obs._unconfirmed ? '⚠️ Registro aún no confirmado por los revisores de eBird\n' : '')+
       '📍 '+obs.locName+'\n'+
       '🕒 '+formatDate(obs.obsDt)+
       (obs.howMany ? '\n🔢 '+obs.howMany+' ejemplar(es)' : '')+
@@ -728,6 +774,14 @@
     var dt = new Date(d.replace(' ','T'));
     if(isNaN(dt.getTime())) return d;
     return dt.toLocaleString('es-CL', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  }
+
+  function primaryName(obs){
+    return state.nameLocale === 'sci' ? obs.sciName : obs.comName;
+  }
+  function secondaryLine(obs){
+    // cuando el nombre principal ya es el científico, mostramos el común como referencia
+    return state.nameLocale === 'sci' ? obs.comName : obs.sciName;
   }
 
   function escapeHtml(s){
