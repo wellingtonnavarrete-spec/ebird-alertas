@@ -227,7 +227,8 @@
     <div class="control-group" style="max-width:110px;">
       <label>Nombres</label>
       <select id="nameLocale">
-        <option value="es_CL">Español (CL)</option>
+        <!-- ¡CORREGIDO AL FORMATO CHILENO OFICIAL DE eBird! -->
+        <option value="es-CL">Español (CL)</option>
         <option value="es">Español</option>
         <option value="en">Inglés</option>
         <option value="sci">Científico</option>
@@ -303,12 +304,50 @@
   let cachedState = localStorage.getItem('ebird_classic_state');
   let state = cachedState ? JSON.parse(cachedState) : {
     apiKey: EMBEDDED_API_KEY, region:'CL', mode:'notable', backDays:2, interval:10,
-    friendPhone:'', lifeList:[], hideSeen:false, nameLocale:'es_CL', includeProvisional:false, seenSubIds:[]
+    friendPhone:'', lifeList:[], hideSeen:false, nameLocale:'es-CL', includeProvisional:false, seenSubIds:[]
   };
+
+  // --- SISTEMA DE FOTOS DE WIKIPEDIA RESTAURADO ---
+  let photoCache = {};
+  try { photoCache = JSON.parse(localStorage.getItem('ebird_photo_cache_v1')) || {}; } catch(e) { photoCache = {}; }
+
+  function savePhotoCache(){
+    const keys = Object.keys(photoCache);
+    if(keys.length > 400){
+      const trimmed = {};
+      keys.slice(-300).forEach(k => { trimmed[k] = photoCache[k]; });
+      photoCache = trimmed;
+    }
+    try { localStorage.setItem('ebird_photo_cache_v1', JSON.stringify(photoCache)); } catch(e){}
+  }
+
+  async function fetchWikiThumb(title){
+    const res = await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title));
+    if(!res.ok) throw new Error('sin resultado');
+    const data = await res.json();
+    return (data.thumbnail && data.thumbnail.source) ? data.thumbnail.source : null;
+  }
+
+  function getSpeciesPhoto(comName, sciName, cb){
+    const key = sciName || comName;
+    if(!key) { cb(null); return; }
+    if(photoCache.hasOwnProperty(key)) { cb(photoCache[key]); return; }
+    
+    fetchWikiThumb(comName)
+      .then(url => { photoCache[key]=url; savePhotoCache(); cb(url); })
+      .catch(() => {
+        fetchWikiThumb(sciName)
+          .then(url => { photoCache[key]=url; savePhotoCache(); cb(url); })
+          .catch(() => { photoCache[key]=null; savePhotoCache(); cb(null); });
+      });
+  }
+  // ------------------------------------------------
 
   let map, markerLayer;
   let pollTimer = null, countdownTimer = null, nextRunAt = null;
-  let lastObservations = [];
+  
+  let cachedObservations = localStorage.getItem('ebird_fast_obs_cache');
+  let lastObservations = cachedObservations ? JSON.parse(cachedObservations) : [];
 
   let isRegistering = false;
   document.getElementById('authSwitchMode').addEventListener('click', () => {
@@ -334,6 +373,7 @@
   document.getElementById('btnLogout').addEventListener('click', () => {
     signOut(auth).then(() => {
       localStorage.removeItem('ebird_classic_state');
+      localStorage.removeItem('ebird_fast_obs_cache');
       location.reload();
     });
   });
@@ -348,6 +388,12 @@
       fillForm();
       renderLifeStatus();
       initMap();
+
+      if(lastObservations.length > 0){
+        renderCurrentData();
+        document.getElementById('lastUpdate').textContent = 'Caché local (Actualizando...)';
+      }
+
       fetchObservations();
 
       getDoc(doc(db, 'users', currentUser.uid)).then(docSnap => {
@@ -440,7 +486,7 @@
     document.getElementById('region').value = state.region || 'CL';
     document.getElementById('mode').value = state.mode || 'notable';
     document.getElementById('includeProvisional').checked = !!state.includeProvisional;
-    document.getElementById('nameLocale').value = state.nameLocale || 'es_CL';
+    document.getElementById('nameLocale').value = state.nameLocale || 'es-CL';
     document.getElementById('backDays').value = state.backDays || 2;
     document.getElementById('friendPhone').value = state.friendPhone || '';
     document.getElementById('hideSeenToggle').checked = !!state.hideSeen;
@@ -479,8 +525,9 @@
   function buildUrl(){
     let base = 'https://api.ebird.org/v2/data/obs/' + encodeURIComponent(state.region) + '/recent';
     if(state.mode === 'notable') base += '/notable';
-    const nameLocale = (state.nameLocale === 'sci') ? 'es_CL' : state.nameLocale;
-    const params = ['back='+state.backDays, 'locale='+nameLocale, 'detail=full', 'key='+encodeURIComponent(state.apiKey)];
+    const nameLocale = state.nameLocale === 'sci' ? 'es-CL' : state.nameLocale;
+    // PARÁMETRO OFICIAL DE eBird: sppLocale
+    const params = ['back='+state.backDays, 'sppLocale='+nameLocale, 'detail=full', 'key='+encodeURIComponent(state.apiKey)];
     if(state.mode === 'all') params.push('maxResults=300');
     if(state.includeProvisional) params.push('includeProvisional=true');
     return base + '?' + params.join('&');
@@ -488,7 +535,7 @@
 
   function fetchObservations(){
     const directUrl = buildUrl();
-    document.getElementById('lastUpdate').textContent = 'Buscando...';
+    if(lastObservations.length === 0) document.getElementById('lastUpdate').textContent = 'Buscando...';
     fetch(directUrl)
       .then(res => { if(!res.ok) throw new Error(); return res.json(); })
       .then(data => { handleNewData(data); })
@@ -496,7 +543,7 @@
         fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(directUrl))
           .then(res => res.json())
           .then(data => { handleNewData(data); })
-          .catch(() => { document.getElementById('lastUpdate').textContent = 'Error red'; });
+          .catch(() => { if(lastObservations.length === 0) document.getElementById('lastUpdate').textContent = 'Error red'; });
       })
       .finally(() => { scheduleNext(); });
   }
@@ -508,18 +555,14 @@
       obs._isNew = !seenSet[obs.subId];
       obs._inLifeList = isInLifeList(obs);
       obs._unconfirmed = (obs.obsValid === false) || (obs.obsReviewed === false);
-      
-      obs._imageUrl = '';
-      if(obs.media && obs.media.length > 0){
-        const photo = obs.media.find(m => m.mediaType === 'photo' || m.url);
-        if(photo && photo.url) obs._imageUrl = photo.url;
-      }
     });
     data.sort((a,b) => new Date(b.obsDt) - new Date(a.obsDt));
     data.forEach(obs => { seenSet[obs.subId]=true; });
     state.seenSubIds = Object.keys(seenSet);
 
     lastObservations = data;
+    try { localStorage.setItem('ebird_fast_obs_cache', JSON.stringify(data)); } catch(e){}
+
     document.getElementById('lastUpdate').textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'});
     renderCurrentData();
   }
@@ -556,7 +599,20 @@
       if(typeof obs.lat !== 'number' || typeof obs.lng !== 'number') return;
       const color = obs._unconfirmed ? '#B8860B' : (obs._inLifeList===false && state.lifeList.length ? '#C94A3D' : '#1F6F64');
       const marker = L.circleMarker([obs.lat,obs.lng], { radius: 6, color: color, fillColor: color, fillOpacity: 0.9, weight: 1 });
+      
       marker.bindPopup(popupHtml(obs));
+      
+      // CARGAR FOTO EN MAPA AL ABRIR EL POPUP
+      marker.on('popupopen', () => {
+        getSpeciesPhoto(obs.comName, obs.sciName, url => {
+          const photoId = 'popup-photo-' + obs.subId + '-' + obs.speciesCode;
+          const el = document.getElementById(photoId);
+          if(el && url) {
+            el.innerHTML = '<img src="'+url+'" style="max-height:100px;max-width:100%;border-radius:4px;object-fit:cover;">';
+          }
+        });
+      });
+
       marker.addTo(markerLayer);
       bounds.push([obs.lat,obs.lng]);
     });
@@ -565,7 +621,9 @@
 
   function popupHtml(obs){
     const observer = escapeHtml(obs.userDisplayName || (obs.firstName ? obs.firstName + ' ' + obs.lastName : 'Ebirder'));
-    const thumbHtml = obs._imageUrl ? '<div style="margin-bottom:6px;text-align:center;"><img src="'+obs._imageUrl+'" style="max-height:100px;max-width:100%;border-radius:4px;object-fit:cover;"></div>' : '';
+    const photoId = 'popup-photo-' + obs.subId + '-' + obs.speciesCode;
+    const thumbHtml = '<div id="'+photoId+'" style="margin-bottom:6px;text-align:center;"></div>';
+    
     return '<div style="font-size:13px;color:#16231F;">'+thumbHtml+'<b>'+escapeHtml(primaryName(obs))+'</b><br>'+
       '<span style="font-style:italic;color:#5B6A5D;">'+escapeHtml(secondaryLine(obs))+'</span><br>'+
       '📍 '+escapeHtml(obs.locName)+'<br>👤 '+observer+'</div>'+
@@ -575,7 +633,23 @@
   function renderFeed(data){
     const feed = document.getElementById('feed');
     if(!data.length){ feed.innerHTML = '<div class="empty-state">No hay registros con estos filtros.</div>'; return; }
+    
     feed.innerHTML = data.map(cardHtml).join('');
+    loadCardPhotos(data); // CARGAR FOTOS DE WIKIPEDIA DESPUÉS DE RENDERIZAR
+  }
+
+  function loadCardPhotos(data){
+    data.forEach(obs => {
+      const photoId = 'photo-' + obs.subId + '-' + obs.speciesCode;
+      const el = document.getElementById(photoId);
+      if(!el) return;
+      getSpeciesPhoto(obs.comName, obs.sciName, url => {
+        if(url){
+          el.innerHTML = '<img src="'+url+'" alt="'+escapeHtml(obs.comName)+'">';
+          el.classList.remove('empty');
+        }
+      });
+    });
   }
 
   function cardHtml(obs){
@@ -587,7 +661,8 @@
     const commentText = obs.comments || obs.subIDComments || '';
     const commentsHtml = commentText ? '<div class="card-comment">💬 "'+escapeHtml(commentText)+'"</div>' : '';
     
-    const thumbDiv = obs._imageUrl ? '<div class="card-thumb"><img src="'+obs._imageUrl+'" alt="Foto"></div>' : '<div class="card-thumb empty"></div>';
+    const photoId = 'photo-' + obs.subId + '-' + obs.speciesCode;
+    const thumbDiv = '<div class="card-thumb empty" id="'+photoId+'"></div>';
 
     return '<div class="'+classes+'">'+
       '<div class="card-top">'+
@@ -601,7 +676,10 @@
       commentsHtml+
       '<div class="card-actions">'+
         '<a class="wa" href="'+whatsappLink(obs)+'" target="_blank" rel="noopener">WhatsApp</a>'+
+        
+        /* BOTÓN DE MAPA DIRECTO RESTAURADO */
         '<a href="https://www.google.com/maps?q='+obs.lat+','+obs.lng+'" target="_blank" rel="noopener">Mapa</a>'+
+        
         '<a href="https://ebird.org/checklist/'+obs.subId+'" target="_blank" rel="noopener">eBird</a>'+
       '</div>'+
     '</div>';
