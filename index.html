@@ -305,7 +305,7 @@
   // ==========================================================
   var EMBEDDED_API_KEY = '89f4bf7f-47ac-4e68-949f-de69c890bce7';
 
-  var STORAGE_KEY = 'ebirdAlertasChile_v8';
+  var STORAGE_KEY = 'ebirdAlertasChile_v9';
   var state = loadState();
   var IMAGE_CACHE_KEY = 'ebirdAlertasChile_images_v1';
   var imageCache = loadImageCache();
@@ -497,7 +497,7 @@
 
   function fetchWikiThumb(title){
     return fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title))
-      .then(function(res){ if(!res.ok) throw new Error('sin resultado'); return res.json(); })
+      .then(function(res){ if(!res.ok) throw new Error('sin página'); return res.json(); })
       .then(function(data){ return (data.thumbnail && data.thumbnail.source) ? data.thumbnail.source : null; });
   }
 
@@ -700,7 +700,7 @@
         '<div style="font-size:12px;color:#5B6A5D;font-style:italic;">'+escapeHtml(secondaryLine(obs))+'</div>'+
       '</div>'+
     '</div>'+
-      '<div style="font-size:12.5px;margin-top:6px;">📍 '+escapeHtml(obs.locName)+'<br>🕒 '+formatDate(obs.obsDt)+'<br>👤 '+observer+'</div>'+
+      '<div style="font-size:12.5px;margin-top:6px;">[Lugar] '+escapeHtml(obs.locName)+'<br>[Hora] '+formatDate(obs.obsDt)+'<br>[Obs] '+observer+'</div>'+
       '<a href="'+whatsappLink(obs)+'" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;background:#1F6F64;color:#fff;padding:5px 10px;border-radius:3px;text-decoration:none;font-size:12px;">Enviar por WhatsApp</a>';
   }
 
@@ -725,7 +725,7 @@
     var photoId = 'photo-' + safeId(obs.subId + obs.speciesCode);
     
     var observer = escapeHtml(obs.userDisplayName || (obs.firstName ? obs.firstName + ' ' + obs.lastName : 'Observador de eBird'));
-    var commentsHtml = obs.comments ? '<div style="margin-top:8px;font-size:12px;color:var(--muted);background:var(--paper);padding:8px;border-left:2px solid var(--line);border-radius:0 3px 3px 0;">💬 <i>"' + escapeHtml(obs.comments) + '"</i></div>' : '';
+    var commentsHtml = obs.comments ? '<div style="margin-top:8px;font-size:12px;color:var(--muted);background:var(--paper);padding:8px;border-left:2px solid var(--line);border-radius:0 3px 3px 0;">[Comentario] <i>"' + escapeHtml(obs.comments) + '"</i></div>' : '';
 
     return '<div class="'+classes+'">'+
       '<div class="photo-wrap empty" id="'+photoId+'"></div>'+
@@ -734,7 +734,7 @@
         '<p class="sci">'+escapeHtml(secondaryLine(obs))+'</p>'+
         '<div class="meta"><span class="loc">'+escapeHtml(obs.locName)+'</span>'+distTxt+'<br>'+
         formatDate(obs.obsDt)+(obs.howMany ? ' · '+obs.howMany+' ejemplar(es)' : '')+'<br>'+
-        '👤 '+observer+'</div>'+
+        '[Obs] '+observer+'</div>'+
         commentsHtml +
       '</div>'+
       '<div class="actions">'+
@@ -748,15 +748,16 @@
   function whatsappLink(obs){
     var nameLine = (state.nameLocale === 'sci') ? primaryName(obs) : (primaryName(obs)+' ('+obs.sciName+')');
     var observer = obs.userDisplayName || (obs.firstName ? obs.firstName + ' ' + obs.lastName : 'Observador de eBird');
-    var msg = '🐦 '+nameLine+'\n'+
-      (obs._unconfirmed ? '⚠️ Rareza aún no confirmada\n' : '')+
-      '📍 '+obs.locName+'\n'+
-      '🕒 '+formatDate(obs.obsDt)+
-      (obs.howMany ? '\n🔢 '+obs.howMany+' ejemplar(es)' : '')+
-      '\n👤 '+observer+
-      (obs.comments ? '\n💬 "'+obs.comments+'"' : '')+
-      '\n🗺️ https://www.google.com/maps?q='+obs.lat+','+obs.lng+
-      '\n📋 https://ebird.org/checklist/'+obs.subId;
+    // Usamos etiquetas de texto claro en lugar de emojis para garantizar que WhatsApp nunca los rompa
+    var msg = '[Ave] '+nameLine+'\n'+
+      (obs._unconfirmed ? '[Alerta] Rareza aún no confirmada\n' : '')+
+      '[Lugar] '+obs.locName+'\n'+
+      '[Fecha] '+formatDate(obs.obsDt)+
+      (obs.howMany ? '\n[Cantidad] '+obs.howMany+' ejemplar(es)' : '')+
+      '\n[Observador] '+observer+
+      (obs.comments ? '\n[Comentario] "'+obs.comments+'"' : '')+
+      '\n[Mapa] https://www.google.com/maps?q='+obs.lat+','+obs.lng+
+      '\n[Checklist] https://ebird.org/checklist/'+obs.subId;
     var encoded = encodeURIComponent(msg);
     return state.friendPhone ?
       'https://wa.me/'+state.friendPhone+'?text='+encoded :
