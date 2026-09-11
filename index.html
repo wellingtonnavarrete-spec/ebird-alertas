@@ -186,7 +186,7 @@
     </div>
   </header>
 
-  <!-- Barra de Configuración Horizontal -->
+  <!-- Barra de Control Rápido Horizontal -->
   <div class="quick-bar">
     <div class="control-group" style="max-width:180px;">
       <label>Zona</label>
@@ -308,7 +308,10 @@
 
   let map, markerLayer;
   let pollTimer = null, countdownTimer = null, nextRunAt = null;
-  let lastObservations = [];
+  
+  // Carga instantánea desde localStorage si existe caché previa
+  let cachedObservations = localStorage.getItem('ebird_fast_obs_cache');
+  let lastObservations = cachedObservations ? JSON.parse(cachedObservations) : [];
 
   let isRegistering = false;
   document.getElementById('authSwitchMode').addEventListener('click', () => {
@@ -334,6 +337,7 @@
   document.getElementById('btnLogout').addEventListener('click', () => {
     signOut(auth).then(() => {
       localStorage.removeItem('ebird_classic_state');
+      localStorage.removeItem('ebird_fast_obs_cache');
       location.reload();
     });
   });
@@ -348,6 +352,14 @@
       fillForm();
       renderLifeStatus();
       initMap();
+
+      // Si tenemos caché local, la renderizamos al instante para cero demora
+      if(lastObservations.length > 0){
+        renderCurrentData();
+        document.getElementById('lastUpdate').textContent = 'Caché local (Actualizando...)';
+      }
+
+      // Descarga fresca en segundo plano
       fetchObservations();
 
       getDoc(doc(db, 'users', currentUser.uid)).then(docSnap => {
@@ -488,7 +500,7 @@
 
   function fetchObservations(){
     const directUrl = buildUrl();
-    document.getElementById('lastUpdate').textContent = 'Buscando...';
+    if(lastObservations.length === 0) document.getElementById('lastUpdate').textContent = 'Buscando...';
     fetch(directUrl)
       .then(res => { if(!res.ok) throw new Error(); return res.json(); })
       .then(data => { handleNewData(data); })
@@ -496,7 +508,7 @@
         fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(directUrl))
           .then(res => res.json())
           .then(data => { handleNewData(data); })
-          .catch(() => { document.getElementById('lastUpdate').textContent = 'Error red'; });
+          .catch(() => { if(lastObservations.length === 0) document.getElementById('lastUpdate').textContent = 'Error red'; });
       })
       .finally(() => { scheduleNext(); });
   }
@@ -520,6 +532,8 @@
     state.seenSubIds = Object.keys(seenSet);
 
     lastObservations = data;
+    try { localStorage.setItem('ebird_fast_obs_cache', JSON.stringify(data)); } catch(e){}
+
     document.getElementById('lastUpdate').textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'});
     renderCurrentData();
   }
@@ -639,6 +653,17 @@
     document.querySelector('.sidebar').style.display = 'flex';
     document.getElementById('map-container').style.display = 'none';
   });
+  document.getElementById('tabMapToggle').classList.addEventListener ? document.getElementById('tabMapToggle').addEventListener('click', () => {
+    document.getElementById('tabMapToggle').classList.add('active');
+    document.getElementById('tabFeed').classList.remove('active');
+    if(window.innerWidth <= 850){
+      document.querySelector('.sidebar').style.display = 'none';
+      document.getElementById('map-container').style.display = 'block';
+    }
+    if(map) map.invalidateSize();
+  }) : null;
+  
+  // Asignación correcta de evento del mapa
   document.getElementById('tabMapToggle').addEventListener('click', () => {
     document.getElementById('tabMapToggle').classList.add('active');
     document.getElementById('tabFeed').classList.remove('active');
