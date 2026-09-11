@@ -227,7 +227,7 @@
     <div class="control-group" style="max-width:110px;">
       <label>Nombres</label>
       <select id="nameLocale">
-        <option value="es_CL">Español (CL)</option>
+        <option value="es-CL">Español (CL)</option>
         <option value="es">Español</option>
         <option value="en">Inglés</option>
         <option value="sci">Científico</option>
@@ -303,13 +303,12 @@
   let cachedState = localStorage.getItem('ebird_classic_state');
   let state = cachedState ? JSON.parse(cachedState) : {
     apiKey: EMBEDDED_API_KEY, region:'CL', mode:'notable', backDays:2, interval:10,
-    friendPhone:'', lifeList:[], hideSeen:false, nameLocale:'es_CL', includeProvisional:false, seenSubIds:[]
+    friendPhone:'', lifeList:[], hideSeen:false, nameLocale:'es-CL', includeProvisional:false, seenSubIds:[]
   };
 
   let map, markerLayer;
   let pollTimer = null, countdownTimer = null, nextRunAt = null;
   
-  // Carga instantánea desde localStorage si existe caché previa
   let cachedObservations = localStorage.getItem('ebird_fast_obs_cache');
   let lastObservations = cachedObservations ? JSON.parse(cachedObservations) : [];
 
@@ -353,13 +352,11 @@
       renderLifeStatus();
       initMap();
 
-      // Si tenemos caché local, la renderizamos al instante para cero demora
       if(lastObservations.length > 0){
         renderCurrentData();
         document.getElementById('lastUpdate').textContent = 'Caché local (Actualizando...)';
       }
 
-      // Descarga fresca en segundo plano
       fetchObservations();
 
       getDoc(doc(db, 'users', currentUser.uid)).then(docSnap => {
@@ -452,7 +449,7 @@
     document.getElementById('region').value = state.region || 'CL';
     document.getElementById('mode').value = state.mode || 'notable';
     document.getElementById('includeProvisional').checked = !!state.includeProvisional;
-    document.getElementById('nameLocale').value = state.nameLocale || 'es_CL';
+    document.getElementById('nameLocale').value = state.nameLocale || 'es-CL';
     document.getElementById('backDays').value = state.backDays || 2;
     document.getElementById('friendPhone').value = state.friendPhone || '';
     document.getElementById('hideSeenToggle').checked = !!state.hideSeen;
@@ -491,8 +488,8 @@
   function buildUrl(){
     let base = 'https://api.ebird.org/v2/data/obs/' + encodeURIComponent(state.region) + '/recent';
     if(state.mode === 'notable') base += '/notable';
-    const nameLocale = (state.nameLocale === 'sci') ? 'es_CL' : state.nameLocale;
-    const params = ['back='+state.backDays, 'locale='+nameLocale, 'detail=full', 'key='+encodeURIComponent(state.apiKey)];
+    const nameLocale = (state.nameLocale === 'sci') ? 'es-CL' : state.nameLocale;
+    const params = ['back='+state.backDays, 'sppLocale='+nameLocale, 'detail=full', 'key='+encodeURIComponent(state.apiKey)];
     if(state.mode === 'all') params.push('maxResults=300');
     if(state.includeProvisional) params.push('includeProvisional=true');
     return base + '?' + params.join('&');
@@ -653,17 +650,6 @@
     document.querySelector('.sidebar').style.display = 'flex';
     document.getElementById('map-container').style.display = 'none';
   });
-  document.getElementById('tabMapToggle').classList.addEventListener ? document.getElementById('tabMapToggle').addEventListener('click', () => {
-    document.getElementById('tabMapToggle').classList.add('active');
-    document.getElementById('tabFeed').classList.remove('active');
-    if(window.innerWidth <= 850){
-      document.querySelector('.sidebar').style.display = 'none';
-      document.getElementById('map-container').style.display = 'block';
-    }
-    if(map) map.invalidateSize();
-  }) : null;
-  
-  // Asignación correcta de evento del mapa
   document.getElementById('tabMapToggle').addEventListener('click', () => {
     document.getElementById('tabMapToggle').classList.add('active');
     document.getElementById('tabFeed').classList.remove('active');
