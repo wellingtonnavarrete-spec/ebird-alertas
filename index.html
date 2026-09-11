@@ -119,10 +119,13 @@
     background:var(--paper);border:1px solid var(--line);
   }
   .card .photo-wrap img{width:100%;height:100%;object-fit:cover;display:block;}
+  
+  /* AQUÍ ESTÁ LA CORRECCIÓN CLAVE PARA EL PÁJARO GRIS (\1F426 es el código CSS correcto) */
   .card .photo-wrap.empty::after{
-    content:'\uD83D\uDC26';display:flex;align-items:center;justify-content:center;
+    content:'\1F426';display:flex;align-items:center;justify-content:center;
     width:100%;height:100%;font-size:28px;opacity:0.35;
   }
+  
   .card-left{display:flex;gap:12px;flex:1;min-width:220px;}
   .photo{width:56px;height:56px;border-radius:4px;object-fit:cover;flex:none;background:var(--paper);border:1px solid var(--line);}
   .photo-ph{width:56px;height:56px;border-radius:4px;flex:none;background:var(--paper);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--muted);}
@@ -305,7 +308,7 @@
   // ==========================================================
   var EMBEDDED_API_KEY = '89f4bf7f-47ac-4e68-949f-de69c890bce7';
 
-  var STORAGE_KEY = 'ebirdAlertasChile_v7';
+  var STORAGE_KEY = 'ebirdAlertasChile_v8'; // Reseteo menor
   var state = loadState();
   var IMAGE_CACHE_KEY = 'ebirdAlertasChile_images_v1';
   var imageCache = loadImageCache();
@@ -745,7 +748,6 @@
     '</div>';
   }
 
-  // --- AQUI ESTA LA FUNCION REPARADA CON UNICODE PARA WHATSAPP ---
   function whatsappLink(obs){
     var nameLine = (state.nameLocale === 'sci') ? primaryName(obs) : (primaryName(obs)+' ('+obs.sciName+')');
     var observer = obs.userDisplayName || (obs.firstName ? obs.firstName + ' ' + obs.lastName : 'Observador de eBird');
